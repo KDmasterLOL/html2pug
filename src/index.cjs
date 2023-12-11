@@ -1,6 +1,6 @@
 const { minify } = require('html-minifier')
 const { parse, parseFragment } = require('parse5')
-const Pugify = require('./parser')
+const Pugify = require('./parser.cjs')
 
 const defaultOptions = {
   // html2pug options
@@ -8,6 +8,7 @@ const defaultOptions = {
   tabs: false,
   commas: true,
   doubleQuotes: false,
+  inlineCollapse: true,
 
   // html-minifier options
   caseSensitive: true,
@@ -22,7 +23,7 @@ module.exports = (sourceHtml, options = {}) => {
   const opts = { ...defaultOptions, ...options }
   const html = minify(sourceHtml, opts)
 
-  const { fragment, tabs, commas, doubleQuotes } = opts
+  const { fragment, tabs, commas, doubleQuotes, inlineCollapse } = opts
 
   // Parse HTML and convert to Pug
   const doc = fragment ? parseFragment(html) : parse(html)
@@ -30,6 +31,7 @@ module.exports = (sourceHtml, options = {}) => {
     tabs,
     commas,
     doubleQuotes,
+    inlineCollapse
   })
   return pugify.parse()
 }

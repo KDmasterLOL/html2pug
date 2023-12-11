@@ -17,7 +17,7 @@ class Parser {
     this.pug = ''
     this.root = root
 
-    const { tabs, commas, doubleQuotes } = options
+    const { tabs, commas, doubleQuotes,inlineCollapse } = options
 
     // Tabs or spaces
     this.indentStyle = tabs ? '\t' : '  '
@@ -25,6 +25,8 @@ class Parser {
     this.separatorStyle = commas ? ', ' : ' '
     // Single quotes or double
     this.quoteStyle = doubleQuotes ? '"' : "'"
+    // Using tag interpolation on inline elements or not
+    this.inlineCollapse = inlineCollapse
   }
 
   getIndent(level = 0) {

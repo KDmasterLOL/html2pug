@@ -1,5 +1,5 @@
 import test from 'ava'
-import html2pug from './src'
+import html2pug from './src/index.cjs'
 
 test('transforms html document to pug with default options', t => {
   const html = `<!doctype html>

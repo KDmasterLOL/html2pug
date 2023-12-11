@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-const hasFlag = require('has-flag')
-const getStdin = require('get-stdin')
-const html2pug = require('./')
-const { version } = require('../package.json')
+import { parseArgs } from 'node:util'
+import { getStdin } from 'get-stdin'
+import html2pug from './index.cjs'
+import { version } from '../package.json'
 
 // help represents the usage guide
 const help = `
@@ -17,6 +17,7 @@ const help = `
     -t, --tabs           Use tabs for indentation
     -c, --commas         Use commas to separate attributes
     -d, --double-quotes  Use double quotes for attribute values
+    -i, --interpolate    Use to interpolate inline tags
     -h, --help           Show this page
     -v, --version        Show version
 
@@ -28,42 +29,37 @@ const help = `
     html2pug < example.html > example.pug
 `
 
-// print logs to stdout and exits the process
-const print = (text, exitCode = 0) => {
-  /* eslint-disable no-console */
-  if (exitCode === 1) {
-    console.error(text)
-  } else {
-    console.log(text)
-  }
-  /* eslint-enable no-console */
+function print(text, exitCode = 0) {
+  // print logs to stdout and exits the process
+  if (exitCode === 1) console.error(text)
+  else console.log(text)
   process.exit(exitCode)
 }
 
-// convert uses the stdin as input for the html2pug library
-const convert = async (options = {}) => {
+async function convert(options = {}) {
+  // convert uses the stdin as input for the html2pug library
   const stdin = await getStdin()
-  if (!stdin) {
-    return print(help)
-  }
+  if (!stdin) return print(help)
   return html2pug(stdin, options)
 }
+let args = parseArgs({
+  options: {
+    help: { type: 'boolean', short: 'h' },
+    version: { type: 'boolean', short: 'v' },
+  },
+}).positionals
+if (args.help) print(help)
+if (args.version) print(version)
 
-if (hasFlag('h') || hasFlag('help')) {
-  print(help)
-}
+args = parseArgs({
+  options: {
+    fragment: { type: 'boolean', short: 'f' },
+    tabs: { type: 'boolean', short: 't' },
+    commas: { type: 'boolean', short: 'c' },
+    doubleQuotes: { type: 'boolean', short: 'd' },
+  },
+}).positionals
 
-if (hasFlag('v') || hasFlag('version')) {
-  print(version)
-}
-
-const options = {
-  fragment: hasFlag('f') || hasFlag('fragment'),
-  tabs: hasFlag('t') || hasFlag('tabs'),
-  commas: hasFlag('c') || hasFlag('commas'),
-  doubleQuotes: hasFlag('d') || hasFlag('double-quotes'),
-}
-
-convert(options)
+convert(args)
   .then(result => print(result))
   .catch(err => print(err, 1))
