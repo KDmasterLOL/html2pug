@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 import { parseArgs } from 'node:util'
-import { getStdin } from 'get-stdin'
+import getStdin from 'get-stdin'
 import html2pug from './index.cjs'
-import { version } from '../package.json'
-
+import packageInfo from '../package.json' assert { type: 'json'}
+const { version } = packageInfo
 // help represents the usage guide
 const help = `
   html2pug converts HTML to Pug.
@@ -29,15 +29,13 @@ const help = `
     html2pug < example.html > example.pug
 `
 
-function print(text, exitCode = 0) {
-  // print logs to stdout and exits the process
+function print(text, exitCode = 0) { // print logs to stdout and exits the process
   if (exitCode === 1) console.error(text)
   else console.log(text)
   process.exit(exitCode)
 }
 
-async function convert(options = {}) {
-  // convert uses the stdin as input for the html2pug library
+async function convert(options = {}) { // convert uses the stdin as input for the html2pug library
   const stdin = await getStdin()
   if (!stdin) return print(help)
   return html2pug(stdin, options)
@@ -46,19 +44,14 @@ let args = parseArgs({
   options: {
     help: { type: 'boolean', short: 'h' },
     version: { type: 'boolean', short: 'v' },
-  },
-}).positionals
-if (args.help) print(help)
-if (args.version) print(version)
-
-args = parseArgs({
-  options: {
     fragment: { type: 'boolean', short: 'f' },
     tabs: { type: 'boolean', short: 't' },
     commas: { type: 'boolean', short: 'c' },
     doubleQuotes: { type: 'boolean', short: 'd' },
   },
 }).positionals
+if (args.help) print(help)
+if (args.version) print(version)
 
 convert(args)
   .then(result => print(result))
