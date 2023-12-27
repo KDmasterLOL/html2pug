@@ -1,6 +1,6 @@
-const { minify } = require('html-minifier')
-const { parse, parseFragment } = require('parse5')
-const Pugify = require('./parser.cjs')
+import { minify } from 'html-minifier'
+import { parse, parseFragment } from 'parse5'
+import Pugify from './parser.cjs'
 
 const defaultOptions = {
   // html2pug options
@@ -18,7 +18,7 @@ const defaultOptions = {
   preserveLineBreaks: true,
 }
 
-module.exports = (sourceHtml, options = {}) => {
+export default (sourceHtml, options = {}) => {
   // Minify source HTML
   const opts = { ...defaultOptions, ...options }
   const html = minify(sourceHtml, opts)

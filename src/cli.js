@@ -2,7 +2,7 @@
 
 import { parseArgs } from 'node:util'
 import getStdin from 'get-stdin'
-import html2pug from './index.cjs'
+import html2pug from './index.js'
 import packageInfo from '../package.json' assert { type: 'json'}
 const { version } = packageInfo
 // help represents the usage guide
