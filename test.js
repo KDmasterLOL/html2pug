@@ -1,8 +1,9 @@
 import test from 'ava'
-import html2pug from './src/index.cjs'
+import html2pug from './dist/index.js'
+
 
 test('transforms html document to pug with default options', t => {
-  const html = `<!doctype html>
+	const html = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -15,7 +16,7 @@ test('transforms html document to pug with default options', t => {
   </body>
 </html>`
 
-  const pug = `doctype html
+	const pug = `doctype html
 html(lang='en')
   head
     meta(charset='utf-8')
@@ -24,17 +25,17 @@ html(lang='en')
     header#nav
       h1.heading Hello, world!`
 
-  const generated = html2pug(html)
-  t.is(generated, pug)
+	const generated = html2pug(html)
+	t.is(generated, pug)
 })
 
 test('result contains no outer html element when fragment is truthy', t => {
-  const generated = html2pug('<h1>Hello World!</h1>', { fragment: true })
-  t.falsy(generated.startsWith('html'))
+	const generated = html2pug('<h1>Hello World!</h1>', { fragment: true })
+	t.falsy(generated.startsWith('html'))
 })
 
 test('respects whitespace within elements', t => {
-  const html = `<!doctype html>
+	const html = `<!doctype html>
 <html lang="en">
   <head>
     <style type="text/css">
@@ -53,7 +54,7 @@ $(document).ready(function() {
   </body>
 </html>`
 
-  const pug = `doctype html
+	const pug = `doctype html
 html(lang='en')
   head
     style(type='text/css').
@@ -71,31 +72,31 @@ html(lang='en')
       })
       `
 
-  const generated = html2pug(html)
-  t.is(generated, pug)
+	const generated = html2pug(html)
+	t.is(generated, pug)
 })
 
 test('creates multiline block when linebreaks are present', t => {
-  const html = '<textarea>multi\nline\nstring</textarea>'
-  const pug = `textarea.
+	const html = '<textarea>multi\nline\nstring</textarea>'
+	const pug = `textarea.
   multi
   line
   string`
 
-  const generated = html2pug(html, { fragment: true })
-  t.is(generated, pug)
+	const generated = html2pug(html, { fragment: true })
+	t.is(generated, pug)
 })
 
 test('uses div tag shorthand when id/class is present', t => {
-  const html = "<div id='foo' class='bar'>baz</div>"
-  const pug = '#foo.bar baz'
+	const html = "<div id='foo' class='bar'>baz</div>"
+	const pug = '#foo.bar baz'
 
-  const generated = html2pug(html, { fragment: true })
-  t.is(generated, pug)
+	const generated = html2pug(html, { fragment: true })
+	t.is(generated, pug)
 })
 
 test('removes whitespace between HTML elements', t => {
-  const html = `<ul class="list">
+	const html = `<ul class="list">
   <li>one</li>
   <li>two</li>
 
@@ -105,82 +106,93 @@ test('removes whitespace between HTML elements', t => {
   <li>four</li>
 </ul>`
 
-  const pug = `ul.list
+	const pug = `ul.list
   li one
   li two
   li three
   li four`
 
-  const generated = html2pug(html, { fragment: true })
-  t.is(generated, pug)
+	const generated = html2pug(html, { fragment: true })
+	t.is(generated, pug)
 })
 
 test('does not fail on unicode characters', t => {
-  const generated = html2pug('<h1 class="accents">â, é, ï, õ, ù</h1>', {
-    fragment: true,
-  })
-  const expected = 'h1.accents â, é, ï, õ, ù'
+	const generated = html2pug('<h1 class="accents">â, é, ï, õ, ù</h1>', {
+		fragment: true,
+	})
+	const expected = 'h1.accents â, é, ï, õ, ù'
 
-  t.is(generated, expected)
+	t.is(generated, expected)
 })
 
 test('uses tabs when tabs is truthy', t => {
-  const generated = html2pug('<div><span>Tabs!</span></div>', {
-    fragment: true,
-    tabs: true,
-  })
-  const expected = 'div\n\tspan Tabs!'
+	const generated = html2pug('<div><span>Tabs!</span></div>', {
+		fragment: true,
+		tabs: true,
+	})
+	const expected = 'div\n\tspan Tabs!'
 
-  t.is(generated, expected)
+	t.is(generated, expected)
 })
 
 test('uses a comma to separate attributes', t => {
-  const generated = html2pug('<input type="text" name="foo" />', {
-    fragment: true,
-  })
-  const expected = "input(type='text', name='foo')"
+	const generated = html2pug('<input type="text" name="foo" />', {
+		fragment: true,
+	})
+	const expected = "input(type='text', name='foo')"
 
-  t.is(generated, expected)
+	t.is(generated, expected)
 })
 
 test('uses a space to separate attributes', t => {
-  const generated = html2pug('<input type="text" name="foo" />', {
-    fragment: true,
-    commas: false,
-  })
-  const expected = "input(type='text' name='foo')"
+	const generated = html2pug('<input type="text" name="foo" />', {
+		fragment: true,
+		commas: false,
+	})
+	const expected = "input(type='text' name='foo')"
 
-  t.is(generated, expected)
+	t.is(generated, expected)
 })
 
 test('uses double quotes for attribute values', t => {
-  const generated = html2pug('<input type="text" name="foo" />', {
-    fragment: true,
-    doubleQuotes: true,
-  })
-  const expected = 'input(type="text", name="foo")'
+	const generated = html2pug('<input type="text" name="foo" />', {
+		fragment: true,
+		doubleQuotes: true,
+	})
+	const expected = 'input(type="text", name="foo")'
 
-  t.is(generated, expected)
+	t.is(generated, expected)
 })
 
 test('single quotes in attribute values are escaped', t => {
-  const generated = html2pug(
-    `<button aria-label="closin&apos;" onclick="window.alert('bye')">close</button>`,
-    {
-      fragment: true,
-    }
-  )
-  const expected = `button(aria-label='closin\\'', onclick='window.alert(\\'bye\\')') close`
+	const generated = html2pug(
+		`<button aria-label="closin&apos;" onclick="window.alert('bye')">close</button>`,
+		{
+			fragment: true,
+		}
+	)
+	const expected = `button(aria-label='closin\\'', onclick='window.alert(\\'bye\\')') close`
 
-  t.is(generated, expected)
+	t.is(generated, expected)
 })
 
 test('collapses boolean attributes', t => {
-  const generated = html2pug(
-    `<input type="text" name="foo" disabled="disabled" readonly="readonly" />`,
-    { fragment: true }
-  )
-  const expected = `input(type='text', name='foo', disabled, readonly)`
+	const generated = html2pug(
+		`<input type="text" name="foo" disabled="disabled" readonly="readonly" />`,
+		{ fragment: true }
+	)
+	const expected = `input(type='text', name='foo', disabled, readonly)`
 
-  t.is(generated, expected)
+	t.is(generated, expected)
+})
+
+test('removing attributes', t => {
+	const generated = html2pug(
+		`<div some-attr attr-with-value="asdfasfas">asdfasdf</div>`,
+		{ fragment: true, keep_attr: false }
+	)
+	const expected = `div asdfasdf`
+	// const expected = `input(type='text', name='foo', disabled, readonly)`
+
+	t.is(generated, expected)
 })

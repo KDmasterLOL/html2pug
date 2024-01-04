@@ -11,26 +11,28 @@ const hasSingleTextNodeChild = node => {
     node.childNodes[0].nodeName === TEXT_NODE
   )
 }
+type options = {
+  indentStyle: '\t' | '  '
+  separatorStyle: ', ' | ' '
+  quoteStyle: '"' | "'"
+  inlineCollapse: boolean // Using tag interpolation on inline elements or not
+  removeAttributes: boolean
+}
+
 
 class Parser {
-  constructor(root, options = {}) {
+  pug: string
+  root: Node
+  options: options
+
+  constructor(root: Node, options: options) {
     this.pug = ''
     this.root = root
-
-    const { tabs, commas, doubleQuotes,inlineCollapse } = options
-
-    // Tabs or spaces
-    this.indentStyle = tabs ? '\t' : '  '
-    // Comma separate attributes
-    this.separatorStyle = commas ? ', ' : ' '
-    // Single quotes or double
-    this.quoteStyle = doubleQuotes ? '"' : "'"
-    // Using tag interpolation on inline elements or not
-    this.inlineCollapse = inlineCollapse
+    this.options = options
   }
 
-  getIndent(level = 0) {
-    return this.indentStyle.repeat(level)
+  getIndent(level = 0): string {
+    return this.options.indentStyle.repeat(level)
   }
 
   parse() {
@@ -47,11 +49,8 @@ class Parser {
   /**
    * DOM tree traversal
    * Depth-first search (pre-order)
-   *
-   * @param {DOM} tree - DOM tree or Node
-   * @param {Number} level - Current tree level
    */
-  *walk(tree, level) {
+  *walk(tree: NodeListOf<ChildNode>, level: number) {
     if (!tree) {
       return
     }
@@ -82,7 +81,7 @@ class Parser {
     const attributes = []
     let pugNode = tagName
 
-    if (!attrs) {
+    if (!attrs || this.options.removeAttributes) {
       return pugNode
     }
 
@@ -107,7 +106,7 @@ class Parser {
         default: {
           // Add escaped single quotes (\') to attribute values
           const val = value.replace(/'/g, "\\'")
-          const quote = this.quoteStyle
+          const quote = this.options.quoteStyle
           attributes.push(val ? `${name}=${quote}${val}${quote}` : name)
           break
         }
@@ -115,7 +114,7 @@ class Parser {
     }
 
     if (attributes.length) {
-      pugNode += `(${attributes.join(this.separatorStyle)})`
+      pugNode += `(${attributes.join(this.options.separatorStyle)})`
     }
 
     return pugNode
@@ -218,4 +217,4 @@ class Parser {
   }
 }
 
-module.exports = Parser
+export default Parser

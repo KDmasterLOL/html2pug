@@ -1,6 +1,7 @@
 import { minify } from 'html-minifier'
-import { parse, parseFragment } from 'parse5'
-import Pugify from './parser.cjs'
+import { JSDOM } from "jsdom"
+
+import Pugify from './parser.js'
 
 const defaultOptions = {
   // html2pug options
@@ -9,6 +10,7 @@ const defaultOptions = {
   commas: true,
   doubleQuotes: false,
   inlineCollapse: true,
+  keep_attr: true,
 
   // html-minifier options
   caseSensitive: true,
@@ -23,15 +25,15 @@ export default (sourceHtml, options = {}) => {
   const opts = { ...defaultOptions, ...options }
   const html = minify(sourceHtml, opts)
 
-  const { fragment, tabs, commas, doubleQuotes, inlineCollapse } = opts
+  const { fragment, tabs, commas, doubleQuotes, inlineCollapse, keep_attr } = opts
 
-  // Parse HTML and convert to Pug
-  const doc = fragment ? parseFragment(html) : parse(html)
-  const pugify = new Pugify(doc, {
-    tabs,
-    commas,
-    doubleQuotes,
-    inlineCollapse
+  const dom = new JSDOM(html)
+  const pugify = new Pugify(dom.window.document.body, {
+    indentStyle: tabs ? '\t' : '  ',
+    separatorStyle: commas ? ', ' : ' ',
+    quoteStyle: doubleQuotes ? '"' : "'",
+    inlineCollapse,
+    removeAttributes: !keep_attr
   })
   return pugify.parse()
 }
