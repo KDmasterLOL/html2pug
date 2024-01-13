@@ -24,6 +24,10 @@ class Parser {
   pug: string
   root: Node
   options: options
+  level: number
+
+
+  public get indent(): string { return this.options.indentStyle.repeat(this.level) }
 
   constructor(root: Node, options: options) {
     this.pug = ''
@@ -31,13 +35,16 @@ class Parser {
     this.options = options
   }
 
+  // TODO: Delete
   getIndent(level = 0): string {
     return this.options.indentStyle.repeat(level)
   }
 
+
+
   parse() {
     const walk = this.walk(this.root.childNodes, 0)
-    let it
+    let it: IteratorResult<Generator>
 
     do {
       it = walk.next()
@@ -46,14 +53,28 @@ class Parser {
     return this.pug.substring(1)
   }
 
+  convert(node: Node, level: number): string {
+    switch (node.nodeType) {
+      case Node.DOCUMENT_NODE:
+        return this.createDoctype(node, level)
+
+      case Node.COMMENT_NODE:
+        return this.createComment(node, level)
+
+      case Node.TEXT_NODE:
+        return this.createText(node, level)
+
+      default:
+        return this.createElement(node as Element, level)
+    }
+    return ""
+  }
   /**
    * DOM tree traversal
    * Depth-first search (pre-order)
    */
-  *walk(tree: NodeListOf<ChildNode>, level: number) {
-    if (!tree) {
-      return
-    }
+  *walk(tree: NodeListOf<ChildNode>, level: number): Generator<Generator> {
+    if (!tree) { return }
 
     for (let i = 0; i < tree.length; i++) {
       const node = tree[i]
@@ -67,54 +88,47 @@ class Parser {
         node.childNodes &&
         node.childNodes.length > 0 &&
         !hasSingleTextNodeChild(node)
-      ) {
-        yield* this.walk(node.childNodes, level + 1)
-      }
+      ) { yield* this.walk(node.childNodes, level + 1) }
     }
   }
 
   /*
    * Returns a Pug node name with all attributes set in parentheses.
    */
-  getNodeWithAttributes(node) {
-    const { tagName, attrs } = node
-    const attributes = []
-    let pugNode = tagName
-
-    if (!attrs || this.options.removeAttributes) {
-      return pugNode
-    }
+  convert_attributes(attributes: NamedNodeMap): string {
+    let result = ""
 
     // Add CSS selectors to pug node and append any element attributes to it
-    for (const attr of attrs) {
-      const { name, value } = attr
-
-      // Remove div tag if a selector is present (shorthand)
-      // e.g. div#form() -> #form()
-      const hasSelector = name === 'id' || name === 'class'
-      if (tagName === DIV_NODE && hasSelector) {
-        pugNode = pugNode.replace(DIV_NODE, '')
-      }
-
+    let buffer = []
+    for (const { name, value } of attributes) {
       switch (name) {
-        case 'id':
-          pugNode += `#${value}`
-          break
-        case 'class':
-          pugNode += `.${value.split(' ').join('.')}`
-          break
+        case 'id': result += `#${value}`; break
+        case 'class': result += `.${value.split(' ').join('.')}`; break
         default: {
-          // Add escaped single quotes (\') to attribute values
-          const val = value.replace(/'/g, "\\'")
+          const val = value.replace(/'/g, "\\'") // Escape single quotes (\') in attribute values
           const quote = this.options.quoteStyle
-          attributes.push(val ? `${name}=${quote}${val}${quote}` : name)
+          buffer.push(val ? `${name}=${quote}${val}${quote}` : name)
           break
         }
       }
+      if (attributes.length) result += '(' + buffer.join(this.options.separatorStyle) + ')'
+      return result
     }
+  }
+  convert_html_element_open_tag(node: Element): string {
+    const { tagName, attributes } = node
+    let pugNode = ""
 
-    if (attributes.length) {
-      pugNode += `(${attributes.join(this.options.separatorStyle)})`
+    const is_true = val => val == true
+    const has_selector = ['id', 'class'].map(attr_name => node.hasAttribute(attr_name)).some(is_true);
+
+    {
+      const has_shorhand = (tagName === DIV_NODE) && has_selector // Shorhand for div if a selector is present e.g. div#form() -> #form()
+      if (has_shorhand == false) pugNode = tagName // Don't add div tag if shorhand present
+    }
+    {
+      const has_attributes = has_selector == true || attributes.length != 0
+      if (has_attributes) pugNode += this.convert_attributes(node.attributes)
     }
 
     return pugNode
@@ -129,7 +143,7 @@ class Parser {
    * @param {Number} level - Current tree level to generate indent
    * @param {String} blockChar - The character used to denote a multiline value
    */
-  formatPugNode(node, value = '', level, blockChar = '.') {
+  formatPugNode(node: string, value: string = '', level: number, blockChar = '.') {
     const indent = this.getIndent(level)
     const result = `${indent}${node}`
 
@@ -173,32 +187,34 @@ class Parser {
    * Actual text in a single #text element has no significant
    * whitespace and should be treated as inline text.
    */
-  createText(node, level) {
-    const { value } = node
+  createText(node: Node, level: number): string {
+    const value = node.nodeValue
     const indent = this.getIndent(level)
 
-    // Omit line breaks between HTML elements
-    if (/^[\n]+$/.test(value)) {
-      return false
+    let result = ""
+
+    { // Omit line breaks between HTML elements
+      const is_line_break = /^[\n]+$/.test(value)
+      if (is_line_break == false) result = `${indent}| ${value}`
     }
 
-    return `${indent}| ${value}`
+    return result
   }
 
   /**
    * createElement formats a generic HTML element.
    */
-  createElement(node, level) {
-    const pugNode = this.getNodeWithAttributes(node)
+  createElement(node: Element, level: number) {
+    const pugNode = this.convert_html_element_open_tag(node)
 
     const value = hasSingleTextNodeChild(node)
-      ? node.childNodes[0].value
-      : node.value
+      ? node.childNodes[0].nodeValue
+      : node.nodeValue
 
-    return this.formatPugNode(pugNode, value, level)
+    return this.formatPugNode(pugNode, value || "", level)
   }
 
-  parseNode(node, level) {
+  parseNode(node: Node, level: number) {
     const { nodeName } = node
 
     switch (nodeName) {
@@ -212,7 +228,7 @@ class Parser {
         return this.createText(node, level)
 
       default:
-        return this.createElement(node, level)
+        return this.createElement(node as Element, level)
     }
   }
 }

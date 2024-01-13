@@ -10,7 +10,7 @@
   "dependencies": {
     "get-stdin": "^9.0.0",
     "html-minifier": "^4.0.0",
-    "jsdom": "^23.0.1",
+    "jsdom": "^23.0.1"
   },
   "devDependencies": {
     "@types/html-minifier": "^4.0.5",
@@ -33,12 +33,6 @@
     "lint:fix": "eslint . --fix",
     "test": "npm run build; ava"
   },
-  "lint-staged": {
-    "*.js": [
-      "npm run lint:fix",
-      "git add"
-    ]
-  },
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/izolate/html2pug.git"
@@ -58,7 +52,6 @@
   "homepage": "https://github.com/izolate/html2pug#readme",
   "husky": {
     "hooks": {
-      "pre-commit": "lint-staged",
       "pre-push": "npm run lint"
     }
   }

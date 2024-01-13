@@ -11,6 +11,7 @@ const defaultOptions = {
   doubleQuotes: false,
   inlineCollapse: true,
   keep_attr: true,
+  clean: true,
 
   // html-minifier options
   caseSensitive: true,
@@ -20,14 +21,27 @@ const defaultOptions = {
   preserveLineBreaks: true,
 }
 
+function clean(DOM: JSDOM) {
+  const body = DOM.window.document.body
+  let target: Document | DocumentFragment
+  let buffer = body.getElementsByTagName('main')
+  if (buffer.length != 0) {
+    target = DOM.window.document.createDocumentFragment()
+    target.append(buffer[0])
+  }
+
+}
 export default (sourceHtml, options = {}) => {
   // Minify source HTML
   const opts = { ...defaultOptions, ...options }
   const html = minify(sourceHtml, opts)
 
-  const { fragment, tabs, commas, doubleQuotes, inlineCollapse, keep_attr } = opts
+  const { fragment, tabs, commas, doubleQuotes, inlineCollapse, keep_attr, clean } = opts
 
   const dom = new JSDOM(html)
+  if (clean) {
+    // clean(dom)
+  }
   const pugify = new Pugify(dom.window.document.body, {
     indentStyle: tabs ? '\t' : '  ',
     separatorStyle: commas ? ', ' : ' ',
