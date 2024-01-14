@@ -15,6 +15,7 @@ class Parser {
     root;
     options;
     level = 0;
+    inline_elements = ['a', 'em', 'strong'];
     get indent() { return this.options.indentStyle.repeat(this.level); }
     constructor(root, options) {
         this.root = root;
@@ -54,16 +55,30 @@ class Parser {
     //     ) { this.level++; this.conv(node.childNodes) }
     //   }
     // }
+    conv_in(tree) {
+    }
     conv(tree) {
         if (!tree) {
             return;
         }
+        let inline_buffer = [];
+        const flush_inline_buffer = () => { if (inline_buffer.length != 0) {
+            this.pug += ` ${inline_buffer.join(' ')}`;
+            inline_buffer = [];
+        } };
         const childrens = tree.childNodes;
         for (let i = 0; i < childrens.length; i++) {
             const node = childrens[i];
-            const newline = this.parseNode(node, this.level);
-            if (newline)
-                this.pug += `\n${newline}`;
+            if (node.nodeType == Node.TEXT_NODE)
+                inline_buffer.push(node.nodeValue.trim());
+            else if (node.nodeType == Node.ELEMENT_NODE && this.inline_elements.includes(node.nodeName.toLowerCase()))
+                inline_buffer.push(`#[${this.parseNode(node, 0).trim()}]`);
+            else {
+                flush_inline_buffer();
+                const newline = this.parseNode(node, this.level);
+                if (newline)
+                    this.pug += `\n${newline}`;
+            }
             if (node.childNodes &&
                 node.childNodes.length > 0 &&
                 !hasSingleTextNodeChild(node)) {
@@ -71,27 +86,10 @@ class Parser {
                 this.conv(node);
             }
         }
+        flush_inline_buffer();
     }
-    /**
-     * DOM tree traversal
-     * Depth-first search (pre-order)
-     */
-    *walk(tree, level) {
-        if (!tree) {
-            return;
-        }
-        for (let i = 0; i < tree.length; i++) {
-            const node = tree[i];
-            const newline = this.parseNode(node, level);
-            if (newline) {
-                this.pug += `\n${newline}`;
-            }
-            if (node.childNodes &&
-                node.childNodes.length > 0 &&
-                !hasSingleTextNodeChild(node)) {
-                yield* this.walk(node.childNodes, level + 1);
-            }
-        }
+    convert_node(node) {
+        return "";
     }
     /*
      * Returns a Pug node name with all attributes set in parentheses.

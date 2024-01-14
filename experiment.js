@@ -71,11 +71,11 @@ let it
 // 	console.log(element.nodeName);
 // });
 
-let a = JSDOM.fragment('<p> AAA </p>')
+let a = JSDOM.fragment('<p>AAA</p>')
 a.append("String of text")
 a.childNodes.forEach(el => console.log(el, el.nodeName, el.nodeValue))
 const Node = DOM.window.Node
 console.log(a.nodeType, Node.DOCUMENT_FRAGMENT_NODE, a.firstChild.outerHTML);
 
-const res = html2pug(test_html)
+const res = html2pug('<p> AAA <em>adf<strong>AA</strong></em> </p>')
 console.log(res)

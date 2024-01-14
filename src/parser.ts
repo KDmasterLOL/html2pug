@@ -29,10 +29,14 @@ class Parser {
   root: Node
   options: options
   level: number = 0
+  inline_elements = ['a', 'em', 'strong']
 
 
+  // Helpers
   public get indent(): string { return this.options.indentStyle.repeat(this.level) }
 
+  has_only_inline_elements(element: Element) { return element.querySelector(`*:not(${this.inline_elements.join()})`) == null }
+  // ------------------------
   constructor(root: Node, options: options) {
     this.root = root
     this.options = options
@@ -83,12 +87,30 @@ class Parser {
   conv(tree: Node) {
     if (!tree) { return }
 
+    let result = this.convert_html_element_open_tag(tree as Element)
+    let inline_buffer = []
+    const flush_inline_buffer = () => { if (inline_buffer.length != 0) { this.pug += ` ${inline_buffer.join(' ')}`; inline_buffer = [] } }
     const childrens = tree.childNodes
+
     for (let i = 0; i < childrens.length; i++) {
       const node = childrens[i]
+      switch (node.nodeType) {
+        case Node.TEXT_NODE: inline_buffer.push(node.nodeValue.trim()); break
+        case Node.ELEMENT_NODE:
+          if (this.inline_elements.includes(node.nodeName.toLowerCase()))
+            inline_buffer.push(`#[${this.parseNode(node, 0).trim()}]`)
+          else {
+            flush_inline_buffer()
+            const pugNode = this.convert_html_element_open_tag(node)
+            const newline = this.parseNode(node, this.level)
+            if (newline) this.pug += `\n${newline}`
+          }
 
-      const newline = this.parseNode(node, this.level)
-      if (newline) this.pug += `\n${newline}`
+          break;
+
+        default:
+          break;
+      }
 
       if (
         node.childNodes &&
@@ -96,8 +118,11 @@ class Parser {
         !hasSingleTextNodeChild(node)
       ) { this.level++; this.conv(node) }
     }
+    flush_inline_buffer()
   }
-
+  convert_node(node: Node): string {
+    return ""
+  }
   /*
    * Returns a Pug node name with all attributes set in parentheses.
    */
