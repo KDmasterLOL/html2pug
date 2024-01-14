@@ -44,20 +44,8 @@ class Parser {
   }
 
 
-
   parse() {
-    const walk = this.walk(this.root.childNodes, 0)
-    let it: IteratorResult<Generator>
-
-    do {
-      it = walk.next()
-    } while (!it.done)
-
-    return this.pug.substring(1)
-  }
-  my_parse() {
-    this.conv(this.root.childNodes)
-
+    this.conv(this.root)
     return this.pug.substring(1)
   }
 
@@ -77,20 +65,27 @@ class Parser {
     return ""
   }
 
-  my_conv(tree: Node) {
+  // conv(tree: NodeListOf<ChildNode>) {
+  //   if (!tree) { return }
+  //   for (let i = 0; i < tree.length; i++) {
+  //     const node = tree[i]
+
+  //     const newline = this.parseNode(node, this.level)
+  //     if (newline) this.pug += `\n${newline}`
+
+  //     if (
+  //       node.childNodes &&
+  //       node.childNodes.length > 0 &&
+  //       !hasSingleTextNodeChild(node)
+  //     ) { this.level++; this.conv(node.childNodes) }
+  //   }
+  // }
+  conv(tree: Node) {
     if (!tree) { return }
 
-    switch (tree.nodeType) {
-      case value:
-
-        break;
-
-      default:
-        break;
-    }
-    for (let i = 0; i < tree.length; i++) {
-      const node = tree[i]
-
+    const childrens = tree.childNodes
+    for (let i = 0; i < childrens.length; i++) {
+      const node = childrens[i]
 
       const newline = this.parseNode(node, this.level)
       if (newline) this.pug += `\n${newline}`
@@ -99,45 +94,7 @@ class Parser {
         node.childNodes &&
         node.childNodes.length > 0 &&
         !hasSingleTextNodeChild(node)
-      ) { this.level++; this.conv(node.childNodes) }
-    }
-  }
-  conv(tree: NodeListOf<ChildNode>) {
-    if (!tree) { return }
-
-    for (let i = 0; i < tree.length; i++) {
-      const node = tree[i]
-
-      const newline = this.parseNode(node, this.level)
-      if (newline) this.pug += `\n${newline}`
-
-      if (
-        node.childNodes &&
-        node.childNodes.length > 0 &&
-        !hasSingleTextNodeChild(node)
-      ) { this.level++; this.conv(node.childNodes) }
-    }
-  }
-  /**
-   * DOM tree traversal
-   * Depth-first search (pre-order)
-   */
-  *walk(tree: NodeListOf<ChildNode>, level: number): Generator<Generator> {
-    if (!tree) { return }
-
-    for (let i = 0; i < tree.length; i++) {
-      const node = tree[i]
-
-      const newline = this.parseNode(node, level)
-      if (newline) {
-        this.pug += `\n${newline}`
-      }
-
-      if (
-        node.childNodes &&
-        node.childNodes.length > 0 &&
-        !hasSingleTextNodeChild(node)
-      ) { yield* this.walk(node.childNodes, level + 1) }
+      ) { this.level++; this.conv(node) }
     }
   }
 

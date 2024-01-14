@@ -1,3 +1,5 @@
+import { JSDOM } from "jsdom";
+const Node = new JSDOM().window.Node;
 const DOCUMENT_TYPE_NODE = '#documentType';
 const TEXT_NODE = '#text';
 const DIV_NODE = 'div';
@@ -23,15 +25,7 @@ class Parser {
         return this.options.indentStyle.repeat(level);
     }
     parse() {
-        const walk = this.walk(this.root.childNodes, 0);
-        let it;
-        do {
-            it = walk.next();
-        } while (!it.done);
-        return this.pug.substring(1);
-    }
-    my_parse() {
-        this.conv(this.root.childNodes);
+        this.conv(this.root);
         return this.pug.substring(1);
     }
     convert(node, level) {
@@ -47,12 +41,26 @@ class Parser {
         }
         return "";
     }
+    // conv(tree: NodeListOf<ChildNode>) {
+    //   if (!tree) { return }
+    //   for (let i = 0; i < tree.length; i++) {
+    //     const node = tree[i]
+    //     const newline = this.parseNode(node, this.level)
+    //     if (newline) this.pug += `\n${newline}`
+    //     if (
+    //       node.childNodes &&
+    //       node.childNodes.length > 0 &&
+    //       !hasSingleTextNodeChild(node)
+    //     ) { this.level++; this.conv(node.childNodes) }
+    //   }
+    // }
     conv(tree) {
         if (!tree) {
             return;
         }
-        for (let i = 0; i < tree.length; i++) {
-            const node = tree[i];
+        const childrens = tree.childNodes;
+        for (let i = 0; i < childrens.length; i++) {
+            const node = childrens[i];
             const newline = this.parseNode(node, this.level);
             if (newline)
                 this.pug += `\n${newline}`;
@@ -60,7 +68,7 @@ class Parser {
                 node.childNodes.length > 0 &&
                 !hasSingleTextNodeChild(node)) {
                 this.level++;
-                this.conv(node.childNodes);
+                this.conv(node);
             }
         }
     }
@@ -196,17 +204,22 @@ class Parser {
             : node.nodeValue;
         return this.formatPugNode(pugNode, value || "", level);
     }
+    my_parseNode(node, level) {
+        const { nodeName } = node;
+        switch (nodeName) {
+            case DOCUMENT_TYPE_NODE: return this.createDoctype(node, level);
+            case COMMENT_NODE: return this.createComment(node, level);
+            case TEXT_NODE: return this.createText(node, level);
+            default: return this.createElement(node, level);
+        }
+    }
     parseNode(node, level) {
         const { nodeName } = node;
         switch (nodeName) {
-            case DOCUMENT_TYPE_NODE:
-                return this.createDoctype(node, level);
-            case COMMENT_NODE:
-                return this.createComment(node, level);
-            case TEXT_NODE:
-                return this.createText(node, level);
-            default:
-                return this.createElement(node, level);
+            case DOCUMENT_TYPE_NODE: return this.createDoctype(node, level);
+            case COMMENT_NODE: return this.createComment(node, level);
+            case TEXT_NODE: return this.createText(node, level);
+            default: return this.createElement(node, level);
         }
     }
 }

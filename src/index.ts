@@ -50,5 +50,5 @@ export default (sourceHtml, options = {}) => {
     inlineCollapse,
     removeAttributes: !keep_attr
   })
-  return pugify.my_parse()
+  return pugify.parse()
 }
