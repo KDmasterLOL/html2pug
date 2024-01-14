@@ -3,6 +3,9 @@ import html2pug from './dist/index.js'
 
 test('convert html string to pug', t => {
 	const html = `html string node`
+	const pug = `| html string node`
+	
+	t.is(html2pug(html), pug)
 })
 // test('transforms html document to pug with default options', t => {
 // 	const html = `<!doctype html>

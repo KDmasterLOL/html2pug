@@ -1,3 +1,7 @@
+import { JSDOM } from "jsdom"
+
+const Node = new JSDOM().window.Node
+
 const DOCUMENT_TYPE_NODE = '#documentType'
 const TEXT_NODE = '#text'
 const DIV_NODE = 'div'
@@ -21,16 +25,15 @@ type options = {
 
 
 class Parser {
-  pug: string
+  pug: string = ''
   root: Node
   options: options
-  level: number
+  level: number = 0
 
 
   public get indent(): string { return this.options.indentStyle.repeat(this.level) }
 
   constructor(root: Node, options: options) {
-    this.pug = ''
     this.root = root
     this.options = options
   }
@@ -52,22 +55,68 @@ class Parser {
 
     return this.pug.substring(1)
   }
+  my_parse() {
+    this.conv(this.root.childNodes)
+
+    return this.pug.substring(1)
+  }
+
 
   convert(node: Node, level: number): string {
     switch (node.nodeType) {
-      case Node.DOCUMENT_NODE:
-        return this.createDoctype(node, level)
+      // case Node.DOCUMENT_NODE:
+      //   return this.createDoctype(node, level)
 
-      case Node.COMMENT_NODE:
-        return this.createComment(node, level)
-
+      // case Node.COMMENT_NODE:
+      //   return this.createComment(node, level)
       case Node.TEXT_NODE:
         return this.createText(node, level)
-
       default:
         return this.createElement(node as Element, level)
     }
     return ""
+  }
+
+  my_conv(tree: Node) {
+    if (!tree) { return }
+
+    switch (tree.nodeType) {
+      case value:
+
+        break;
+
+      default:
+        break;
+    }
+    for (let i = 0; i < tree.length; i++) {
+      const node = tree[i]
+
+
+      const newline = this.parseNode(node, this.level)
+      if (newline) this.pug += `\n${newline}`
+
+      if (
+        node.childNodes &&
+        node.childNodes.length > 0 &&
+        !hasSingleTextNodeChild(node)
+      ) { this.level++; this.conv(node.childNodes) }
+    }
+  }
+  conv(tree: NodeListOf<ChildNode>) {
+    if (!tree) { return }
+
+    for (let i = 0; i < tree.length; i++) {
+      const node = tree[i]
+
+      const newline = this.parseNode(node, this.level)
+      if (newline) this.pug += `\n${newline}`
+
+      if (
+        node.childNodes &&
+        node.childNodes.length > 0 &&
+        !hasSingleTextNodeChild(node)
+      ) { this.level++; this.conv(node.childNodes) }
+    }
   }
   /**
    * DOM tree traversal
@@ -214,21 +263,24 @@ class Parser {
     return this.formatPugNode(pugNode, value || "", level)
   }
 
+  my_parseNode(node: Node, level: number) {
+    const { nodeName } = node
+
+    switch (nodeName) {
+      case DOCUMENT_TYPE_NODE: return this.createDoctype(node, level)
+      case COMMENT_NODE: return this.createComment(node, level)
+      case TEXT_NODE: return this.createText(node, level)
+      default: return this.createElement(node as Element, level)
+    }
+  }
   parseNode(node: Node, level: number) {
     const { nodeName } = node
 
     switch (nodeName) {
-      case DOCUMENT_TYPE_NODE:
-        return this.createDoctype(node, level)
-
-      case COMMENT_NODE:
-        return this.createComment(node, level)
-
-      case TEXT_NODE:
-        return this.createText(node, level)
-
-      default:
-        return this.createElement(node as Element, level)
+      case DOCUMENT_TYPE_NODE: return this.createDoctype(node, level)
+      case COMMENT_NODE: return this.createComment(node, level)
+      case TEXT_NODE: return this.createText(node, level)
+      default: return this.createElement(node as Element, level)
     }
   }
 }

@@ -1,4 +1,5 @@
 import { JSDOM } from 'jsdom'
+import html2pug from './dist/index.js'
 
 // const test_html = `<!DOCTYPE html>
 // <html lang="en">
@@ -38,7 +39,7 @@ let p = document.querySelector('p')
 f.append(main);
 {
 	const elements = [...main.children].reduce((arr, el) => (arr += ` ${el.tagName} `), "")
-	console.log(elements);
+	console.log(elements)
 }
 
 function* walk(tree, level) {
@@ -75,3 +76,6 @@ a.append("String of text")
 a.childNodes.forEach(el => console.log(el, el.nodeName, el.nodeValue))
 const Node = DOM.window.Node
 console.log(a.nodeType, Node.DOCUMENT_FRAGMENT_NODE, a.firstChild.outerHTML);
+
+const res = html2pug(test_html)
+console.log(res)

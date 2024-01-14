@@ -1,6 +1,7 @@
 import { minify } from 'html-minifier';
 import { JSDOM } from "jsdom";
 import Pugify from './parser.js';
+import processHTML from "./process_html.js";
 const defaultOptions = {
     // html2pug options
     fragment: false,
@@ -32,15 +33,18 @@ export default (sourceHtml, options = {}) => {
     const html = minify(sourceHtml, opts);
     const { fragment, tabs, commas, doubleQuotes, inlineCollapse, keep_attr, clean } = opts;
     const dom = new JSDOM(html);
-    if (clean) {
-        // clean(dom)
-    }
-    const pugify = new Pugify(dom.window.document.body, {
+    const document = dom.window.document;
+    let root;
+    if (clean)
+        root = processHTML(document);
+    else
+        root = document;
+    const pugify = new Pugify(root, {
         indentStyle: tabs ? '\t' : '  ',
         separatorStyle: commas ? ', ' : ' ',
         quoteStyle: doubleQuotes ? '"' : "'",
         inlineCollapse,
         removeAttributes: !keep_attr
     });
-    return pugify.parse();
+    return pugify.my_parse();
 };
