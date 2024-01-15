@@ -16,7 +16,10 @@ class Parser {
     options;
     level = 0;
     inline_elements = ['a', 'em', 'strong'];
+    // Helpers
     get indent() { return this.options.indentStyle.repeat(this.level); }
+    has_only_inline_elements(element) { return element.querySelector(`*:not(${this.inline_elements.join()})`) == null; }
+    // ------------------------
     constructor(root, options) {
         this.root = root;
         this.options = options;
@@ -26,70 +29,55 @@ class Parser {
         return this.options.indentStyle.repeat(level);
     }
     parse() {
-        this.conv(this.root);
+        this.pug = this.convert_node(this.root);
         return this.pug.substring(1);
     }
-    convert(node, level) {
-        switch (node.nodeType) {
-            // case Node.DOCUMENT_NODE:
-            //   return this.createDoctype(node, level)
-            // case Node.COMMENT_NODE:
-            //   return this.createComment(node, level)
-            case Node.TEXT_NODE:
-                return this.createText(node, level);
-            default:
-                return this.createElement(node, level);
-        }
-        return "";
-    }
-    // conv(tree: NodeListOf<ChildNode>) {
-    //   if (!tree) { return }
-    //   for (let i = 0; i < tree.length; i++) {
-    //     const node = tree[i]
-    //     const newline = this.parseNode(node, this.level)
-    //     if (newline) this.pug += `\n${newline}`
-    //     if (
-    //       node.childNodes &&
-    //       node.childNodes.length > 0 &&
-    //       !hasSingleTextNodeChild(node)
-    //     ) { this.level++; this.conv(node.childNodes) }
-    //   }
-    // }
-    conv_in(tree) {
-    }
-    conv(tree) {
-        if (!tree) {
-            return;
-        }
+    convert_node(tree, level = 0) {
+        let result = "";
+        if (tree.nodeType == Node.ELEMENT_NODE)
+            result += this.convert_html_element_open_tag(tree);
+        if (tree.childNodes.length == 0)
+            return result;
         let inline_buffer = [];
-        const flush_inline_buffer = () => { if (inline_buffer.length != 0) {
-            this.pug += ` ${inline_buffer.join(' ')}`;
-            inline_buffer = [];
-        } };
+        const flush_inline_buffer = function () {
+            if (inline_buffer.length) {
+                result += ` ${inline_buffer.join(' ')}`;
+                inline_buffer = [];
+            }
+        };
         const childrens = tree.childNodes;
+        let last_interpolated = true;
+        const add = (content, newline = false) => {
+            if (newline) {
+                flush_inline_buffer(); // Must be before adding new line
+                result += `\n${this.getIndent(level)}${content}`;
+            }
+            else
+                inline_buffer.push(content);
+            last_interpolated = !newline;
+        };
         for (let i = 0; i < childrens.length; i++) {
             const node = childrens[i];
-            if (node.nodeType == Node.TEXT_NODE)
-                inline_buffer.push(node.nodeValue.trim());
-            else if (node.nodeType == Node.ELEMENT_NODE && this.inline_elements.includes(node.nodeName.toLowerCase()))
-                inline_buffer.push(`#[${this.parseNode(node, 0).trim()}]`);
-            else {
-                flush_inline_buffer();
-                const newline = this.parseNode(node, this.level);
-                if (newline)
-                    this.pug += `\n${newline}`;
-            }
-            if (node.childNodes &&
-                node.childNodes.length > 0 &&
-                !hasSingleTextNodeChild(node)) {
-                this.level++;
-                this.conv(node);
+            switch (node.nodeType) {
+                case Node.TEXT_NODE:
+                    const content = node.nodeValue.trim();
+                    if (/^\s*$/g.test(content))
+                        continue;
+                    add(last_interpolated ? content : `| ${content}`, !last_interpolated);
+                    break;
+                case Node.ELEMENT_NODE:
+                    let converted_element = this.convert_node(node, level + 1);
+                    const can_interpolate = ((element) => {
+                        const is_inline_element = this.inline_elements.includes(element.tagName.toLowerCase());
+                        const has_only_inline_elements = element.querySelector(`*:not(${this.inline_elements.join()})`) == null;
+                        return is_inline_element && has_only_inline_elements;
+                    })(node);
+                    add(can_interpolate ? `#[${converted_element}]` : converted_element, !can_interpolate);
+                    break;
             }
         }
         flush_inline_buffer();
-    }
-    convert_node(node) {
-        return "";
+        return result;
     }
     /*
      * Returns a Pug node name with all attributes set in parentheses.
@@ -113,7 +101,7 @@ class Parser {
                     break;
                 }
             }
-            if (attributes.length)
+            if (buffer.length != 0)
                 result += '(' + buffer.join(this.options.separatorStyle) + ')';
             return result;
         }
@@ -126,7 +114,7 @@ class Parser {
         {
             const has_shorhand = (tagName === DIV_NODE) && has_selector; // Shorhand for div if a selector is present e.g. div#form() -> #form()
             if (has_shorhand == false)
-                pugNode = tagName; // Don't add div tag if shorhand present
+                pugNode = tagName.toLowerCase(); // Don't add div tag if shorhand present
         }
         {
             const has_attributes = has_selector == true || attributes.length != 0;
