@@ -14,23 +14,34 @@ class Parser {
     pug = '';
     root;
     options;
-    level = 0;
-    inline_elements = ['a', 'em', 'strong'];
-    // Helpers
-    get indent() { return this.options.indentStyle.repeat(this.level); }
-    has_only_inline_elements(element) { return element.querySelector(`*:not(${this.inline_elements.join()})`) == null; }
+    inline_elements = "a, em , strong, code, span";
     // ------------------------
     constructor(root, options) {
         this.root = root;
         this.options = options;
     }
-    // TODO: Delete
-    getIndent(level = 0) {
-        return this.options.indentStyle.repeat(level);
-    }
+    getIndent(level = 0) { return this.options.indentStyle.repeat(level); }
     parse() {
         this.pug = this.convert_node(this.root);
         return this.pug.substring(1);
+    }
+    can_interpolate(element) {
+        const is_inline_element = element.matches(this.inline_elements);
+        const has_only_inline_elements = element.querySelector(`*:not(${this.inline_elements})`) == null;
+        return (is_inline_element && has_only_inline_elements) && !this.is_multiline(element);
+    }
+    is_multiline(node) {
+        const is_pre_wrap = (() => {
+            let b = node;
+            while (b != undefined)
+                if (b.nodeName == "PRE")
+                    return true;
+                else
+                    b = b.parentElement;
+            return false;
+        })();
+        const has_newlines = node.textContent.includes('\n');
+        return is_pre_wrap && has_newlines;
     }
     convert_node(tree, level = 0) {
         let result = "";
@@ -38,6 +49,10 @@ class Parser {
             result += this.convert_html_element_open_tag(tree);
         if (tree.childNodes.length == 0)
             return result;
+        const is_multiline = this.is_multiline(tree);
+        if (is_multiline) {
+            result += '.\n';
+        }
         let inline_buffer = [];
         const flush_inline_buffer = function () {
             if (inline_buffer.length) {
@@ -47,7 +62,9 @@ class Parser {
         };
         const childrens = tree.childNodes;
         let last_interpolated = true;
-        const add = (content, newline = false) => {
+        const add = (node_type, content, newline = false) => {
+            if (node_type == Node.TEXT_NODE)
+                content = '| ' + content;
             if (newline) {
                 flush_inline_buffer(); // Must be before adding new line
                 result += `\n${this.getIndent(level)}${content}`;
@@ -58,23 +75,32 @@ class Parser {
         };
         for (let i = 0; i < childrens.length; i++) {
             const node = childrens[i];
+            let content = "";
+            let is_newline = false;
             switch (node.nodeType) {
                 case Node.TEXT_NODE:
-                    const content = node.nodeValue.trim();
+                    content = node.nodeValue.trim();
                     if (/^\s*$/g.test(content))
-                        continue;
-                    add(last_interpolated ? content : `| ${content}`, !last_interpolated);
+                        continue; // Skip if blank line
+                    is_newline = !last_interpolated;
+                    if (is_newline)
+                        content = "| " + content;
+                    // if (is_multiline) content.replaceAll('\n', `\n${this.getIndent(level + 1)}`)
                     break;
                 case Node.ELEMENT_NODE:
-                    let converted_element = this.convert_node(node, level + 1);
-                    const can_interpolate = ((element) => {
-                        const is_inline_element = this.inline_elements.includes(element.tagName.toLowerCase());
-                        const has_only_inline_elements = element.querySelector(`*:not(${this.inline_elements.join()})`) == null;
-                        return is_inline_element && has_only_inline_elements;
-                    })(node);
-                    add(can_interpolate ? `#[${converted_element}]` : converted_element, !can_interpolate);
+                    content = this.convert_node(node, level + 1);
+                    is_newline = !this.can_interpolate(node);
+                    if (is_newline == false)
+                        content = `#[${content}]`;
                     break;
             }
+            if (is_newline) {
+                flush_inline_buffer();
+                result += `\n${this.getIndent(level)}${content}`;
+            } // Flush must be before adding new line
+            else
+                inline_buffer.push(content);
+            last_interpolated = !is_newline; // Last element interpolated if there is no new line
         }
         flush_inline_buffer();
         return result;

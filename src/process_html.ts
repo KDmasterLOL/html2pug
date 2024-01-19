@@ -1,9 +1,29 @@
 import { JSDOM } from 'jsdom'
 
+function escape(str: string) {
+	const REPLACEMENTS = {
+		'<': '&lt;',
+		'>': '&gt;',
+	}
+	for (const [k, v] of Object.entries(REPLACEMENTS)) str = str.replace(new RegExp(k, 'g'), v)
+	return str
+}
+
+function clear_codes(document: DocumentFragment) {
+	let code_elements: NodeListOf<HTMLElement> = document.querySelectorAll('code')
+	for (let index = 0; index < code_elements.length; index++) {
+		const code_element = code_elements[index]
+		code_element.innerHTML = escape(code_element.textContent)
+	}
+}
+
 export default function (document: Document): DocumentFragment {
-	const frag = document.createDocumentFragment()
-	frag.appendChild(document.body)
-	return frag
+	const result = document.createDocumentFragment()
+	const body = document.body
+	result.appendChild(body.querySelector("main, #main, [role=main]") || body)
+	clear_codes(result)
+
+	return result
 }
 
 // function remove_attributes(element: HTMLElement) {

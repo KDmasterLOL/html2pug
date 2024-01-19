@@ -28,7 +28,7 @@ class Parser {
   pug: string = ''
   root: Node
   options: options
-  inline_elements: string = "a, em , strong"
+  inline_elements: string = "a, em , strong, code, span"
 
 
   // ------------------------
@@ -45,10 +45,18 @@ class Parser {
     return this.pug.substring(1)
   }
 
-  can_iterpolate(element: Element) {
+  can_interpolate(element: Element) {
     const is_inline_element = element.matches(this.inline_elements)
     const has_only_inline_elements = element.querySelector(`*:not(${this.inline_elements})`) == null
-    return is_inline_element && has_only_inline_elements
+    return (is_inline_element && has_only_inline_elements) && !this.is_multiline(element)
+  }
+  is_multiline(node: Node) {
+    const is_pre_wrap = (() => { // If node is PRE element or has parent PRE element then `white-space: pre-wrap` enabled
+      let b = node; while (b != undefined) if (b.nodeName == "PRE") return true; else b = b.parentElement
+      return false
+    })()
+    const has_newlines = node.textContent.includes('\n')
+    return is_pre_wrap && has_newlines
   }
 
   convert_node(tree: Node, level: number = 0) {
@@ -56,6 +64,7 @@ class Parser {
     if (tree.nodeType == Node.ELEMENT_NODE) result += this.convert_html_element_open_tag(tree as Element)
     if (tree.childNodes.length == 0) return result
 
+    const is_multiline = this.is_multiline(tree); if (is_multiline) { result += '.\n'; }
 
     let inline_buffer = []
     const flush_inline_buffer = function () {
@@ -63,30 +72,24 @@ class Parser {
     }
 
     const childrens = tree.childNodes; let last_interpolated = true
-    const add = (content: string, newline = false) => {
-      if (newline) {
-        flush_inline_buffer() // Must be before adding new line
-        result += `\n${this.getIndent(level)}${content}`
-      } else inline_buffer.push(content)
-      last_interpolated = !newline
-    }
+
     for (let i = 0; i < childrens.length; i++) {
       const node = childrens[i]
-
+      let content = ""; let is_newline = false;
       switch (node.nodeType) {
         case Node.TEXT_NODE:
-          const content = node.nodeValue.trim()
-          if (/^\s*$/g.test(content)) continue // Skip if blank line
-          add(last_interpolated ? content : `| ${content}`, !last_interpolated)
+          content = node.nodeValue.trim(); if (/^\s*$/g.test(content)) continue // Skip if blank line
+          is_newline = !last_interpolated; if (is_newline) content = "| " + content
+          // if (is_multiline) content.replaceAll('\n', `\n${this.getIndent(level + 1)}`)
           break
-
         case Node.ELEMENT_NODE:
-          let converted_element = this.convert_node(node, level + 1)
-
-          const can_interpolate = this.can_iterpolate(node as Element)
-          add(can_interpolate ? `#[${converted_element}]` : converted_element, !can_interpolate)
+          content = this.convert_node(node, level + 1)
+          is_newline = !this.can_interpolate(node as Element); if (is_newline == false) content = `#[${content}]`
           break
       }
+      if (is_newline) { flush_inline_buffer(); result += `\n${this.getIndent(level)}${content}` } // Flush must be before adding new line
+      else inline_buffer.push(content)
+      last_interpolated = !is_newline // Last element interpolated if there is no new line
     }
     flush_inline_buffer()
     return result

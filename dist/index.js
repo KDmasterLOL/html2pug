@@ -34,11 +34,9 @@ export default (sourceHtml, options = {}) => {
     const { fragment, tabs, commas, doubleQuotes, inlineCollapse, keep_attr, clean } = opts;
     const dom = new JSDOM(html);
     const document = dom.window.document;
-    let root;
+    let root = document;
     if (clean)
         root = processHTML(document);
-    else
-        root = document;
     const pugify = new Pugify(root, {
         indentStyle: tabs ? '\t' : '  ',
         separatorStyle: commas ? ', ' : ' ',

@@ -40,9 +40,10 @@ export default (sourceHtml, options = {}) => {
 
   const dom = new JSDOM(html)
   const document = dom.window.document
-  let root: Document | DocumentFragment
+  let root: Document | DocumentFragment = document
+
   if (clean) root = processHTML(document)
-  else root = document
+
   const pugify = new Pugify(root, {
     indentStyle: tabs ? '\t' : '  ',
     separatorStyle: commas ? ', ' : ' ',
