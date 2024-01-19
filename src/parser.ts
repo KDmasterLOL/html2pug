@@ -75,12 +75,11 @@ class Parser {
 
     for (let i = 0; i < childrens.length; i++) {
       const node = childrens[i]
-      let content = ""; let is_newline = false;
+      let content = ""; let is_newline = false
       switch (node.nodeType) {
         case Node.TEXT_NODE:
           content = node.nodeValue.trim(); if (/^\s*$/g.test(content)) continue // Skip if blank line
           is_newline = !last_interpolated; if (is_newline) content = "| " + content
-          // if (is_multiline) content.replaceAll('\n', `\n${this.getIndent(level + 1)}`)
           break
         case Node.ELEMENT_NODE:
           content = this.convert_node(node, level + 1)

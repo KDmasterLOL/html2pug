@@ -17,12 +17,16 @@ import html2pug from './dist/index.js'
 // <p>Just like <code>$:</code>, this may feel a little weird at first. That's not how <code>export</code> normally works in JavaScript modules! Just roll with it for now — it'll soon become second nature.</p>
 // </blockquote>
 // </div> <p><a href="/tutorial/default-values">Next: Default values</a></p></div> <footer class="svelte-12fabrn"><a target="_blank" rel="noreferrer" class="edit svelte-12fabrn" href="https://github.com/sveltejs/learn.svelte.dev/tree/main/content/tutorial/01-svelte/03-props/01-declaring-props">Edit this page</a></footer></section> </section></div>`
+// const test_html = `<pre>asdfasdfa
+// dafsdfasfasdf
+// sadfasdfasdfasdf <span>
+// 	 sadfasfasdfassa
+// 	adfasdfasdfasdf
+// </span> asdasfdasdfsad</pre>`
 const test_html = `<pre>asdfasdfa
 dafsdfasfasdf
-sadfasdfasdfasdf <span>
-	 sadfasfasdfassa
-	adfasdfasdfasdf
-</span> asdasfdasdfsad</pre>`
+sadfasdfasdfasdf
+asdasfdasdfsad</pre>`
 const test_fragment = `string of text node`
 
 
