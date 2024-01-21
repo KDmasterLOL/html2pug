@@ -14,7 +14,7 @@ class Parser {
     pug = '';
     root;
     options;
-    inline_elements = "a, em , strong, code, span";
+    inline_elements = "a, b, i, em , strong, code, span";
     // ------------------------
     constructor(root, options) {
         this.root = root;
@@ -28,20 +28,28 @@ class Parser {
     can_interpolate(element) {
         const is_inline_element = element.matches(this.inline_elements);
         const has_only_inline_elements = element.querySelector(`*:not(${this.inline_elements})`) == null;
-        return (is_inline_element && has_only_inline_elements) && !this.is_multiline(element);
+        const has_not_block_text = this.has_block_text(element) == false;
+        return is_inline_element && has_only_inline_elements && has_not_block_text;
     }
-    is_multiline(node) {
-        const is_pre_wrap = (() => {
-            let b = node;
-            while (b != undefined)
-                if (b.nodeName == "PRE")
-                    return true;
-                else
-                    b = b.parentElement;
+    has_block_expansion(element) {
+        return element.childNodes.length == 1 && element.childNodes[0].nodeType == Node.ELEMENT_NODE; // Has only only one child node that is `ELEMENT_NODE`
+    }
+    has_pre_wrap(node) {
+        let b = node;
+        while (b != undefined)
+            if (b.nodeName == "PRE")
+                return true;
+            else
+                b = b.parentElement;
+        return false;
+    }
+    has_block_text(node) {
+        if (node.nodeType != node.ELEMENT_NODE)
             return false;
-        })();
+        const is_pre_wrap = this.has_pre_wrap(node);
         const has_newlines = node.textContent.includes('\n');
-        return is_pre_wrap && has_newlines;
+        const has_no_multiline_elements = [...node.childNodes].some(el => this.has_block_text(el)) == false;
+        return is_pre_wrap && has_newlines && has_no_multiline_elements;
     }
     convert_node(tree, level = 0) {
         let result = "";
@@ -49,43 +57,43 @@ class Parser {
             result += this.convert_html_element_open_tag(tree);
         if (tree.childNodes.length == 0)
             return result;
-        const is_multiline = this.is_multiline(tree);
-        if (is_multiline) {
-            result += '.\n';
+        if (this.has_block_expansion(tree)) {
+            result += ": " + this.convert_node(tree.childNodes[0], level + 1);
+            return result;
         }
+        const has_block_text = this.has_block_text(tree);
+        if (has_block_text) {
+            result += '.';
+        }
+        // const has_pre_wrap = this.has_pre_wrap(tree) TODO: pre-wrap when there is several block text in pre
         let inline_buffer = [];
-        const flush_inline_buffer = function () {
+        const flush_inline_buffer = () => {
             if (inline_buffer.length) {
-                result += ` ${inline_buffer.join(' ')}`;
+                let content = inline_buffer.join('');
                 inline_buffer = [];
+                if (has_block_text) {
+                    const s = '\n' + this.getIndent(level);
+                    content = s + content.replaceAll('\n', s);
+                }
+                else
+                    content = " " + content;
+                result += content;
             }
         };
         const childrens = tree.childNodes;
         let last_interpolated = true;
-        const add = (node_type, content, newline = false) => {
-            if (node_type == Node.TEXT_NODE)
-                content = '| ' + content;
-            if (newline) {
-                flush_inline_buffer(); // Must be before adding new line
-                result += `\n${this.getIndent(level)}${content}`;
-            }
-            else
-                inline_buffer.push(content);
-            last_interpolated = !newline;
-        };
         for (let i = 0; i < childrens.length; i++) {
             const node = childrens[i];
             let content = "";
             let is_newline = false;
             switch (node.nodeType) {
                 case Node.TEXT_NODE:
-                    content = node.nodeValue.trim();
-                    if (/^\s*$/g.test(content))
+                    content = node.nodeValue;
+                    if (has_block_text == false && /^\s*$/g.test(content))
                         continue; // Skip if blank line
                     is_newline = !last_interpolated;
                     if (is_newline)
                         content = "| " + content;
-                    // if (is_multiline) content.replaceAll('\n', `\n${this.getIndent(level + 1)}`)
                     break;
                 case Node.ELEMENT_NODE:
                     content = this.convert_node(node, level + 1);
@@ -96,7 +104,7 @@ class Parser {
             }
             if (is_newline) {
                 flush_inline_buffer();
-                result += `\n${this.getIndent(level)}${content}`;
+                result += "\n" + this.getIndent(level) + content;
             } // Flush must be before adding new line
             else
                 inline_buffer.push(content);

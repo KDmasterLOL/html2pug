@@ -28,7 +28,7 @@ class Parser {
   pug: string = ''
   root: Node
   options: options
-  inline_elements: string = "a, em , strong, code, span"
+  inline_elements: string = "a, b, i, em , strong, code, span"
 
 
   // ------------------------
@@ -48,15 +48,24 @@ class Parser {
   can_interpolate(element: Element) {
     const is_inline_element = element.matches(this.inline_elements)
     const has_only_inline_elements = element.querySelector(`*:not(${this.inline_elements})`) == null
-    return (is_inline_element && has_only_inline_elements) && !this.is_multiline(element)
+    const has_not_block_text = this.has_block_text(element) == false
+    return is_inline_element && has_only_inline_elements && has_not_block_text
   }
-  is_multiline(node: Node) {
-    const is_pre_wrap = (() => { // If node is PRE element or has parent PRE element then `white-space: pre-wrap` enabled
-      let b = node; while (b != undefined) if (b.nodeName == "PRE") return true; else b = b.parentElement
-      return false
-    })()
+  has_block_expansion(element: Element) {
+    return element.childNodes.length == 1 && element.childNodes[0].nodeType == Node.ELEMENT_NODE // Has only only one child node that is `ELEMENT_NODE`
+  }
+  has_pre_wrap(node: Node) { // If node is PRE element or has parent PRE element then `white-space: pre-wrap` enabled
+    let b = node; while (b != undefined) if (b.nodeName == "PRE") return true; else b = b.parentElement
+    return false
+  }
+  has_block_text(node: Node) {
+    if (node.nodeType != node.ELEMENT_NODE) return false
+
+    const is_pre_wrap = this.has_pre_wrap(node)
     const has_newlines = node.textContent.includes('\n')
-    return is_pre_wrap && has_newlines
+    const has_no_multiline_elements = [...node.childNodes].some(el => this.has_block_text(el)) == false
+
+    return is_pre_wrap && has_newlines && has_no_multiline_elements
   }
 
   convert_node(tree: Node, level: number = 0) {
@@ -64,11 +73,20 @@ class Parser {
     if (tree.nodeType == Node.ELEMENT_NODE) result += this.convert_html_element_open_tag(tree as Element)
     if (tree.childNodes.length == 0) return result
 
-    const is_multiline = this.is_multiline(tree); if (is_multiline) { result += '.\n'; }
+    if (this.has_block_expansion(tree as Element)) { result += ": " + this.convert_node(tree.childNodes[0], level + 1); return result }
+
+    const has_block_text = this.has_block_text(tree); if (has_block_text) { result += '.'; }
+
+    // const has_pre_wrap = this.has_pre_wrap(tree) TODO: pre-wrap when there is several block text in pre
 
     let inline_buffer = []
-    const flush_inline_buffer = function () {
-      if (inline_buffer.length) { result += ` ${inline_buffer.join(' ')}`; inline_buffer = [] }
+    const flush_inline_buffer = () => {
+      if (inline_buffer.length) {
+        let content = inline_buffer.join(''); inline_buffer = []
+        if (has_block_text) { const s = '\n' + this.getIndent(level); content = s + content.replaceAll('\n', s) }
+        else content = " " + content
+        result += content
+      }
     }
 
     const childrens = tree.childNodes; let last_interpolated = true
@@ -78,7 +96,8 @@ class Parser {
       let content = ""; let is_newline = false
       switch (node.nodeType) {
         case Node.TEXT_NODE:
-          content = node.nodeValue.trim(); if (/^\s*$/g.test(content)) continue // Skip if blank line
+          content = node.nodeValue
+          if (has_block_text == false && /^\s*$/g.test(content)) continue // Skip if blank line
           is_newline = !last_interpolated; if (is_newline) content = "| " + content
           break
         case Node.ELEMENT_NODE:
@@ -86,7 +105,7 @@ class Parser {
           is_newline = !this.can_interpolate(node as Element); if (is_newline == false) content = `#[${content}]`
           break
       }
-      if (is_newline) { flush_inline_buffer(); result += `\n${this.getIndent(level)}${content}` } // Flush must be before adding new line
+      if (is_newline) { flush_inline_buffer(); result += "\n" + this.getIndent(level) + content } // Flush must be before adding new line
       else inline_buffer.push(content)
       last_interpolated = !is_newline // Last element interpolated if there is no new line
     }
