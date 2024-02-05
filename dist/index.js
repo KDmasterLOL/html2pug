@@ -11,6 +11,7 @@ const defaultOptions = {
     inlineCollapse: true,
     keep_attr: true,
     clean: true,
+    simple: true,
     // html-minifier options
     caseSensitive: true,
     removeEmptyAttributes: true,
@@ -31,7 +32,7 @@ export default (sourceHtml, options = {}) => {
     // Minify source HTML
     const opts = { ...defaultOptions, ...options };
     const html = minify(sourceHtml, opts);
-    const { fragment, tabs, commas, doubleQuotes, inlineCollapse, keep_attr, clean } = opts;
+    const { fragment, tabs, commas, doubleQuotes, inlineCollapse, keep_attr, clean, simple } = opts;
     const dom = new JSDOM(html);
     const document = dom.window.document;
     let root = document;
@@ -42,7 +43,8 @@ export default (sourceHtml, options = {}) => {
         separatorStyle: commas ? ', ' : ' ',
         quoteStyle: doubleQuotes ? '"' : "'",
         inlineCollapse,
-        removeAttributes: !keep_attr
+        removeAttributes: !keep_attr,
+        simple
     });
     return pugify.parse();
 };

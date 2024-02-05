@@ -22,7 +22,10 @@ class Parser {
     }
     getIndent(level = 0) { return this.options.indentStyle.repeat(level); }
     parse() {
-        this.pug = this.convert_node(this.root);
+        if (this.options.simple)
+            this.simple_node_convert(this.root);
+        else
+            this.pug = this.convert_node(this.root);
         return this.pug.substring(1);
     }
     can_interpolate(element) {
@@ -49,18 +52,27 @@ class Parser {
         const has_multiline_elements = [...element.children].some(el => this.has_block_text(el) || this.can_interpolate(el) == false);
         return is_pre_wrap && has_newlines(element) && has_multiline_elements == false;
     }
+    simple_node_convert(node, level = 0) {
+        const add = (str) => this.pug += '\n' + this.getIndent(level) + str;
+        switch (node.nodeType) {
+            case Node.TEXT_NODE:
+                add('| ' + node.nodeValue);
+                break;
+            case Node.DOCUMENT_FRAGMENT_NODE:
+                node.childNodes.forEach(n => this.simple_node_convert(n, level));
+                break;
+            case Node.ELEMENT_NODE: add(node.nodeName.toLowerCase());
+            default: node.childNodes.forEach(n => this.simple_node_convert(n, level + 1));
+        }
+    }
     convert_node(tree, level = 0) {
         let result = "";
         if (tree.nodeType == Node.ELEMENT_NODE)
             result += this.convert_html_element_open_tag(tree);
         if (tree.childNodes.length == 0)
             return result;
-        if (this.has_block_expansion(tree)) {
-            result += ": " + this.convert_node(tree.childNodes[0], level + 1);
-            return result;
-        } // Block expansion shortcut
         // const has_pre_wrap = this.has_pre_wrap(tree) TODO: pre-wrap when there is several block text in pre
-        let inline_buffer = [];
+        let inline_buffer = [], content_buffer = [];
         const flush_inline_buffer = () => {
             let content = "";
             if (inline_buffer.length) {
@@ -106,8 +118,9 @@ class Parser {
             last_interpolated = !is_newline; // Last element interpolated if there is no new line
         }
         let b = flush_inline_buffer();
-        const has_block_text = this.has_block_text(tree);
-        if (has_block_text) {
+        if (this.has_block_expansion(tree))
+            result += ": "; // Block expansion shortcut
+        else if (this.has_block_text(tree)) {
             b = '.' + make_textblock(b, level);
         }
         result += b;

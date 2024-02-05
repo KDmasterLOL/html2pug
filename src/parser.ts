@@ -1,4 +1,5 @@
 import { JSDOM } from "jsdom"
+import { arrayBuffer } from "stream/consumers"
 
 const Node = new JSDOM().window.Node
 
@@ -21,6 +22,7 @@ type options = {
   quoteStyle: '"' | "'"
   inlineCollapse: boolean // Using tag interpolation on inline elements or not
   removeAttributes: boolean
+  simple: boolean
 }
 
 
@@ -41,7 +43,8 @@ class Parser {
 
 
   parse() {
-    this.pug = this.convert_node(this.root)
+    if (this.options.simple) this.simple_node_convert(this.root)
+    else this.pug = this.convert_node(this.root)
     return this.pug.substring(1)
   }
 
@@ -66,6 +69,16 @@ class Parser {
     return is_pre_wrap && has_newlines(element) && has_multiline_elements == false
   }
 
+  simple_node_convert(node: Node, level: number = 0) {
+    const add = (str: string) => this.pug += '\n' + this.getIndent(level) + str
+
+    switch (node.nodeType) {
+      case Node.TEXT_NODE: add('| ' + node.nodeValue); break
+      case Node.DOCUMENT_FRAGMENT_NODE: node.childNodes.forEach(n => this.simple_node_convert(n, level)); break
+      case Node.ELEMENT_NODE: add(node.nodeName.toLowerCase())
+      default: node.childNodes.forEach(n => this.simple_node_convert(n, level + 1))
+    }
+  }
   convert_node(tree: Node, level: number = 0) {
     let result = ""
     if (tree.nodeType == Node.ELEMENT_NODE) result += this.convert_html_element_open_tag(tree as Element)
