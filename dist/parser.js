@@ -43,13 +43,11 @@ class Parser {
                 b = b.parentElement;
         return false;
     }
-    has_block_text(node) {
-        if (node.nodeType != node.ELEMENT_NODE)
-            return false;
-        const is_pre_wrap = this.has_pre_wrap(node);
-        const has_newlines = node.textContent.includes('\n');
-        const has_no_multiline_elements = [...node.childNodes].some(el => this.has_block_text(el)) == false;
-        return is_pre_wrap && has_newlines && has_no_multiline_elements;
+    has_block_text(element) {
+        const is_pre_wrap = this.has_pre_wrap(element);
+        const has_newlines = (el) => el.textContent.includes('\n');
+        const has_multiline_elements = [...element.children].some(el => this.has_block_text(el) || this.can_interpolate(el) == false);
+        return is_pre_wrap && has_newlines(element) && has_multiline_elements == false;
     }
     convert_node(tree, level = 0) {
         let result = "";
@@ -60,26 +58,23 @@ class Parser {
         if (this.has_block_expansion(tree)) {
             result += ": " + this.convert_node(tree.childNodes[0], level + 1);
             return result;
-        }
-        const has_block_text = this.has_block_text(tree);
-        if (has_block_text) {
-            result += '.';
-        }
+        } // Block expansion shortcut
         // const has_pre_wrap = this.has_pre_wrap(tree) TODO: pre-wrap when there is several block text in pre
         let inline_buffer = [];
         const flush_inline_buffer = () => {
+            let content = "";
             if (inline_buffer.length) {
-                let content = inline_buffer.join('');
+                content = inline_buffer.join('');
                 inline_buffer = [];
-                if (has_block_text) {
-                    const s = '\n' + this.getIndent(level);
-                    content = s + content.replaceAll('\n', s);
-                }
-                else
-                    content = " " + content;
-                result += content;
+                content = " " + content;
             }
+            return content;
         };
+        const make_textblock = (str, level) => {
+            const s = '\n' + this.getIndent(level);
+            return s + str.trim().replaceAll('\n', s);
+        };
+        const is_pre_wrap = this.has_pre_wrap(tree);
         const childrens = tree.childNodes;
         let last_interpolated = true;
         for (let i = 0; i < childrens.length; i++) {
@@ -89,7 +84,7 @@ class Parser {
             switch (node.nodeType) {
                 case Node.TEXT_NODE:
                     content = node.nodeValue;
-                    if (has_block_text == false && /^\s*$/g.test(content))
+                    if (is_pre_wrap == false && /^\s*$/g.test(content))
                         continue; // Skip if blank line
                     is_newline = !last_interpolated;
                     if (is_newline)
@@ -97,20 +92,25 @@ class Parser {
                     break;
                 case Node.ELEMENT_NODE:
                     content = this.convert_node(node, level + 1);
-                    is_newline = !this.can_interpolate(node);
-                    if (is_newline == false)
+                    const can_interpolate = this.can_interpolate(node);
+                    if (can_interpolate)
                         content = `#[${content}]`;
+                    is_newline = can_interpolate == false;
                     break;
             }
             if (is_newline) {
-                flush_inline_buffer();
-                result += "\n" + this.getIndent(level) + content;
+                result += flush_inline_buffer() + "\n" + this.getIndent(level) + content;
             } // Flush must be before adding new line
             else
                 inline_buffer.push(content);
             last_interpolated = !is_newline; // Last element interpolated if there is no new line
         }
-        flush_inline_buffer();
+        let b = flush_inline_buffer();
+        const has_block_text = this.has_block_text(tree);
+        if (has_block_text) {
+            b = '.' + make_textblock(b, level);
+        }
+        result += b;
         return result;
     }
     /*
