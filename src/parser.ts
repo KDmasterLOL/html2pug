@@ -73,7 +73,7 @@ class Parser {
 
     // const has_pre_wrap = this.has_pre_wrap(tree) TODO: pre-wrap when there is several block text in pre
 
-    let inline_buffer = []
+    let inline_buffer = [], content_buffer = []
     const flush_inline_buffer = () => {
       let content = ""
       if (inline_buffer.length) {
