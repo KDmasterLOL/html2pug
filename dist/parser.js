@@ -25,7 +25,7 @@ class Parser {
         if (this.options.simple)
             this.simple_node_convert(this.root);
         else
-            this.pug = this.convert_node(this.root);
+            this.pug = this.convert_tree(this.root);
         return this.pug.substring(1);
     }
     can_interpolate(element) {
@@ -65,65 +65,42 @@ class Parser {
             default: node.childNodes.forEach(n => this.simple_node_convert(n, level + 1));
         }
     }
-    convert_node(tree, level = 0) {
+    convert_tree(tree) {
         let result = "";
-        if (tree.nodeType == Node.ELEMENT_NODE)
-            result += this.convert_html_element_open_tag(tree);
-        if (tree.childNodes.length == 0)
-            return result;
-        // const has_pre_wrap = this.has_pre_wrap(tree) TODO: pre-wrap when there is several block text in pre
-        let inline_buffer = [], content_buffer = [];
-        const flush_inline_buffer = () => {
-            let content = "";
-            if (inline_buffer.length) {
-                content = inline_buffer.join('');
-                inline_buffer = [];
-                content = " " + content;
-            }
-            return content;
-        };
-        const make_textblock = (str, level) => {
-            const s = '\n' + this.getIndent(level);
-            return s + str.trim().replaceAll('\n', s);
-        };
-        const is_pre_wrap = this.has_pre_wrap(tree);
-        const childrens = tree.childNodes;
-        let last_interpolated = true;
-        for (let i = 0; i < childrens.length; i++) {
-            const node = childrens[i];
-            let content = "";
-            let is_newline = false;
-            switch (node.nodeType) {
+        let Flags;
+        (function (Flags) {
+            Flags[Flags["None"] = 0] = "None";
+            Flags[Flags["PreWrap"] = 1] = "PreWrap";
+        })(Flags || (Flags = {}));
+        let tree_stack = [{ node: tree, child_index: 0, flags: Flags.None }];
+        while (tree_stack.length > 0) {
+            const last_stack_entry = tree_stack[tree_stack.length - 1];
+            const { node, child_index, flags } = last_stack_entry;
+            if (child_index >= node.childNodes.length) {
+                tree_stack.pop();
+                continue;
+            } // Check if out of childrens
+            const child = node.childNodes[child_index], level = tree_stack.length;
+            switch (child.nodeType) {
                 case Node.TEXT_NODE:
-                    content = node.nodeValue;
-                    if (is_pre_wrap == false && /^\s*$/g.test(content))
-                        continue; // Skip if blank line
-                    is_newline = !last_interpolated;
-                    if (is_newline)
-                        content = "| " + content;
+                    result += '\n' + this.getIndent(level) + '| ' + child.nodeValue;
                     break;
                 case Node.ELEMENT_NODE:
-                    content = this.convert_node(node, level + 1);
-                    const can_interpolate = this.can_interpolate(node);
-                    if (can_interpolate)
-                        content = `#[${content}]`;
-                    is_newline = can_interpolate == false;
+                    const element = child;
+                    {
+                        const prefix = (node.childNodes.length == 1) ? ': ' : '\n' + this.getIndent(level);
+                        result += prefix + element.tagName.toLowerCase();
+                    }
+                    {
+                        let new_flags = flags;
+                        if (element.tagName.toLowerCase() == "pre")
+                            new_flags |= Flags.PreWrap;
+                        tree_stack.push({ node: child, child_index: 0, flags: new_flags });
+                    }
                     break;
             }
-            if (is_newline) {
-                result += flush_inline_buffer() + "\n" + this.getIndent(level) + content;
-            } // Flush must be before adding new line
-            else
-                inline_buffer.push(content);
-            last_interpolated = !is_newline; // Last element interpolated if there is no new line
+            last_stack_entry.child_index += 1;
         }
-        let b = flush_inline_buffer();
-        if (this.has_block_expansion(tree))
-            result += ": "; // Block expansion shortcut
-        else if (this.has_block_text(tree)) {
-            b = '.' + make_textblock(b, level);
-        }
-        result += b;
         return result;
     }
     /*

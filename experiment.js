@@ -34,5 +34,5 @@ const test_fragment = `string of text node`
 
 
 
-const res = html2pug(test_html, { simple: true })
+const res = html2pug(test_html, { simple: false })
 console.log(res)
