@@ -83,7 +83,7 @@ class Parser {
             const child = node.childNodes[child_index], level = tree_stack.length;
             switch (child.nodeType) {
                 case Node.TEXT_NODE:
-                    result += '\n' + this.getIndent(level) + '| ' + child.nodeValue;
+                    result += child_index == 0 ? ' ' + child.nodeValue : '\n' + this.getIndent(level) + '| ' + child.nodeValue;
                     break;
                 case Node.ELEMENT_NODE:
                     const element = child;
