@@ -71,34 +71,48 @@ class Parser {
         (function (Flags) {
             Flags[Flags["None"] = 0] = "None";
             Flags[Flags["PreWrap"] = 1] = "PreWrap";
+            Flags[Flags["Interpolate"] = 2] = "Interpolate";
         })(Flags || (Flags = {}));
         let tree_stack = [{ node: tree, child_index: 0, flags: Flags.None }];
         while (tree_stack.length > 0) {
             const last_stack_entry = tree_stack[tree_stack.length - 1];
             const { node, child_index, flags } = last_stack_entry;
             if (child_index >= node.childNodes.length) {
+                if (flags && Flags.Interpolate)
+                    result += "]";
                 tree_stack.pop();
                 continue;
             } // Check if out of childrens
             const child = node.childNodes[child_index], level = tree_stack.length;
+            let prefix = "", value = "";
             switch (child.nodeType) {
                 case Node.TEXT_NODE:
-                    result += child_index == 0 ? ' ' + child.nodeValue : '\n' + this.getIndent(level) + '| ' + child.nodeValue;
+                    const is_interpolate = child_index == 0 || node.childNodes[child_index - 1].nodeType == Node.TEXT_NODE;
+                    // const last_child_string = node.childNodes[child_index - 1].nodeType == Node.TEXT_NODE, first_child = child_index == 0
+                    // const prefix = last_child_string || first_child ? ' ' : '\n' + this.getIndent(level) + '| '
+                    prefix = is_interpolate ? ' ' : '\n' + this.getIndent(level) + '| ';
+                    value = child.nodeValue;
                     break;
                 case Node.ELEMENT_NODE:
                     const element = child;
-                    {
-                        const prefix = (node.childNodes.length == 1) ? ': ' : '\n' + this.getIndent(level);
-                        result += prefix + element.tagName.toLowerCase();
+                    const single_child = node.childNodes.length == 1;
+                    const can_interpolate = this.can_interpolate(element) && single_child == false;
+                    if (single_child)
+                        prefix = ": ";
+                    else if (can_interpolate) {
+                        prefix = " #[";
+                        last_stack_entry.flags |= Flags.Interpolate;
                     }
+                    else
+                        prefix = "\n" + this.getIndent(level);
+                    const tagName = element.tagName.toLowerCase();
+                    value = tagName;
                     {
-                        let new_flags = flags;
-                        if (element.tagName.toLowerCase() == "pre")
-                            new_flags |= Flags.PreWrap;
-                        tree_stack.push({ node: child, child_index: 0, flags: new_flags });
+                        tree_stack.push({ node: child, child_index: 0, flags: tagName == "pre" ? Flags.PreWrap : Flags.None });
                     }
                     break;
             }
+            result += prefix + value;
             last_stack_entry.child_index += 1;
         }
         return result;
