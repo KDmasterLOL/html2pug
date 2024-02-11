@@ -70,50 +70,55 @@ class Parser {
             Flags[Flags["None"] = 0] = "None";
             Flags[Flags["PreWrap"] = 1] = "PreWrap";
             Flags[Flags["Interpolate"] = 2] = "Interpolate";
+            Flags[Flags["LastInterpolated"] = 4] = "LastInterpolated";
         })(Flags || (Flags = {}));
         let result = "";
-        let tree_stack = [{ node: tree, child_index: 0, flags: Flags.None }];
+        let tree_stack = [{ node: tree, child_index: 0, flags: Flags.None }], previous_child;
         while (tree_stack.length > 0) {
             const last_stack_entry = tree_stack[tree_stack.length - 1];
             const { node, child_index, flags } = last_stack_entry;
-            if (child_index >= node.childNodes.length) {
-                if (flags & Flags.Interpolate)
-                    result += "]";
-                tree_stack.pop();
-                continue;
-            } // Check if out of childrens
+            {
+                const is_text_node = node.nodeType == Node.TEXT_NODE;
+                if (is_text_node || child_index >= node.childNodes.length) {
+                    if (is_text_node == false && (flags & Flags.Interpolate))
+                        result += "]";
+                    previous_child = tree_stack.pop();
+                    continue;
+                } // Check if out of childrens
+            }
             const child = node.childNodes[child_index], level = tree_stack.length;
-            let prefix = "", value = "";
+            let prefix = "", value = "", new_flags = Flags.None, can_interpolate = false;
             switch (child.nodeType) {
                 case Node.TEXT_NODE:
-                    const is_interpolate = child_index == 0 || node.childNodes[child_index - 1].nodeType == Node.TEXT_NODE; // First chilren or previous child is Text node
-                    // const last_child_string = node.childNodes[child_index - 1].nodeType == Node.TEXT_NODE, first_child = child_index == 0
-                    // const prefix = last_child_string || first_child ? ' ' : '\n' + this.getIndent(level) + '| '
-                    prefix = is_interpolate ? ' ' : '\n' + this.getIndent(level) + '| ';
+                    can_interpolate = (previous_child == undefined) || ((previous_child.flags & Flags.Interpolate) != 0);
+                    prefix = can_interpolate ? ' ' : '\n' + this.getIndent(level) + '| ';
                     value = child.nodeValue;
                     break;
                 case Node.ELEMENT_NODE:
                     const element = child;
-                    const single_child = node.childNodes.length == 1;
-                    const can_interpolate = this.can_interpolate(element) && single_child == false;
-                    let new_flags = Flags.None;
-                    if (single_child)
-                        prefix = ": ";
-                    else if (can_interpolate) {
-                        prefix = " #[";
-                        new_flags |= Flags.Interpolate;
+                    {
+                        const single_child = node.childNodes.length == 1;
+                        can_interpolate = this.can_interpolate(element) && single_child == false;
+                        if (single_child)
+                            prefix = ": ";
+                        else if (can_interpolate)
+                            prefix = " #[";
+                        else
+                            prefix = "\n" + this.getIndent(level);
                     }
-                    else
-                        prefix = "\n" + this.getIndent(level);
                     {
                         const tagName = element.tagName.toLowerCase();
                         value = tagName;
                         if (tagName == "pre")
                             new_flags |= Flags.PreWrap;
                     }
-                    const new_entry = { node: child, child_index: 0, flags: new_flags };
-                    tree_stack.push(new_entry);
                     break;
+            }
+            if (can_interpolate)
+                new_flags |= Flags.Interpolate;
+            {
+                const new_entry = { node: child, child_index: 0, flags: new_flags };
+                tree_stack.push(new_entry);
             }
             result += prefix + value;
             last_stack_entry.child_index += 1;
