@@ -8,6 +8,10 @@
 
 - Has only one `Node` of type `Node.ELEMENT_NODE` child
 
+### Text Block
+
+With regex convert lines that follow each other and replace with one dot
+
 ### Multiline content
 
 - Has pre-wrap property

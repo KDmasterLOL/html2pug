@@ -82,7 +82,8 @@ class Parser {
       None = 0,
       PreWrap = 1 << 0,
       Interpolate = 1 << 1,
-      LastInterpolated = 1 << 2,
+      SingleChild = 1 << 2,
+      FirstChild = 1 << 3,
     }
     type tree_value = { node: Node, child_index: number, flags: Flags }
 
@@ -95,42 +96,50 @@ class Parser {
       {
         const is_text_node = node.nodeType == Node.TEXT_NODE
         if (is_text_node || child_index >= node.childNodes.length) {
-          if (is_text_node == false && (flags & Flags.Interpolate)) result += "]"
+          if (is_text_node == false && (flags & Flags.Interpolate)) result += "]" // End interpolation
           previous_child = tree_stack.pop(); continue
         } // Check if out of childrens
       }
 
       const child = node.childNodes[child_index], level = tree_stack.length
-      let prefix = "", value = "", new_flags = Flags.None
+      let prefix = "", value = "", child_flags = Flags.None
+
+      if (child_index == 0) child_flags |= Flags.FirstChild
+      if (node.childNodes.length == 1) child_flags |= Flags.SingleChild
+      if (
+        (flags & Flags.PreWrap)
+        ||
+        (node.nodeName.toLowerCase() == "pre")
+      ) child_flags |= Flags.PreWrap
+
       switch (child.nodeType) {
         case Node.TEXT_NODE:
-          const last_interpolated = previous_child && (previous_child.node.nodeType == Node.TEXT_NODE || (previous_child.flags & Flags.Interpolate) != 0)
-          const is_first_child = child_index == 0
-          const can_interpolate = is_first_child || last_interpolated
-          if (is_first_child) prefix = ' '
-          else prefix = can_interpolate ? '' : '\n' + this.getIndent(level) + '| '
+          child_flags |= Flags.Interpolate
+          {
+            const last_interpolated = previous_child && ((previous_child.flags & Flags.Interpolate) != 0)
+            const can_interpolate = (child_flags & Flags.FirstChild) || last_interpolated
+            if (can_interpolate) prefix = child_flags & Flags.FirstChild ? ' ' : ''
+            else prefix = '\n' + this.getIndent(level) + '| '
+          }
           value = child.nodeValue
           break
         case Node.ELEMENT_NODE:
           const element = child as HTMLElement
-          {
-            const is_single_child = node.childNodes.length == 1
-            const can_interpolate = (this.can_interpolate(element) && is_single_child == false) || ((flags & Flags.Interpolate) != 0)
-            if (is_single_child) prefix = ": "
-            else if (can_interpolate) { prefix = "#["; new_flags |= Flags.Interpolate }
-            else prefix = "\n" + this.getIndent(level)
+          if (child_flags & Flags.SingleChild) prefix = ": "
+          else if ((flags & Flags.Interpolate) || this.can_interpolate(element)) {
+            prefix = "#["; child_flags |= Flags.Interpolate
           }
-          {
-            const tagName = element.tagName.toLowerCase()
-            value = tagName
-            if (tagName == "pre") new_flags |= Flags.PreWrap
-          }
+          else prefix = "\n" + this.getIndent(level)
+
+          value = element.tagName.toLowerCase()
+
           break
       }
-      {
-        const new_entry = { node: child, child_index: 0, flags: new_flags }
-        tree_stack.push(new_entry)
-      }
+      tree_stack.push({
+        node: child,
+        child_index: 0,
+        flags: child_flags
+      })
 
       result += prefix + value
       last_stack_entry.child_index += 1
