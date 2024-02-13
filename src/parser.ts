@@ -84,6 +84,7 @@ class Parser {
       Interpolate = 1 << 1,
       SingleChild = 1 << 2,
       FirstChild = 1 << 3,
+      TextBlock = 1 << 4,
     }
     type tree_value = { node: Node, child_index: number, flags: Flags }
 
@@ -111,6 +112,7 @@ class Parser {
         ||
         (node.nodeName.toLowerCase() == "pre")
       ) child_flags |= Flags.PreWrap
+      if (false) child_flags |= Flags.TextBlock // TODO:
 
       switch (child.nodeType) {
         case Node.TEXT_NODE:
@@ -141,6 +143,11 @@ class Parser {
         flags: child_flags
       })
 
+      if (child_flags & Flags.TextBlock) {
+        const new_line = '\n' + this.getIndent(level + 1)
+        prefix = child_flags & Flags.FirstChild ? '.' + new_line : ''
+        value.replaceAll('\n', new_line)
+      }
       result += prefix + value
       last_stack_entry.child_index += 1
 
