@@ -87,22 +87,29 @@ class Parser {
                 } // Check if out of childrens
             }
             const child = node.childNodes[child_index], level = tree_stack.length;
-            let prefix = "", value = "", new_flags = Flags.None, can_interpolate = false;
+            let prefix = "", value = "", new_flags = Flags.None;
             switch (child.nodeType) {
                 case Node.TEXT_NODE:
-                    can_interpolate = (previous_child == undefined) || ((previous_child.flags & Flags.Interpolate) != 0);
-                    prefix = can_interpolate ? ' ' : '\n' + this.getIndent(level) + '| ';
+                    const last_interpolated = previous_child && (previous_child.node.nodeType == Node.TEXT_NODE || (previous_child.flags & Flags.Interpolate) != 0);
+                    const is_first_child = child_index == 0;
+                    const can_interpolate = is_first_child || last_interpolated;
+                    if (is_first_child)
+                        prefix = ' ';
+                    else
+                        prefix = can_interpolate ? '' : '\n' + this.getIndent(level) + '| ';
                     value = child.nodeValue;
                     break;
                 case Node.ELEMENT_NODE:
                     const element = child;
                     {
-                        const single_child = node.childNodes.length == 1;
-                        can_interpolate = this.can_interpolate(element) && single_child == false;
-                        if (single_child)
+                        const is_single_child = node.childNodes.length == 1;
+                        const can_interpolate = (this.can_interpolate(element) && is_single_child == false) || ((flags & Flags.Interpolate) != 0);
+                        if (is_single_child)
                             prefix = ": ";
-                        else if (can_interpolate)
-                            prefix = " #[";
+                        else if (can_interpolate) {
+                            prefix = "#[";
+                            new_flags |= Flags.Interpolate;
+                        }
                         else
                             prefix = "\n" + this.getIndent(level);
                     }
@@ -114,8 +121,6 @@ class Parser {
                     }
                     break;
             }
-            if (can_interpolate)
-                new_flags |= Flags.Interpolate;
             {
                 const new_entry = { node: child, child_index: 0, flags: new_flags };
                 tree_stack.push(new_entry);

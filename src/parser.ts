@@ -104,17 +104,20 @@ class Parser {
       let prefix = "", value = "", new_flags = Flags.None
       switch (child.nodeType) {
         case Node.TEXT_NODE:
-          const last_interpolated = previous_child && (previous_child.node.nodeType == Node.TEXT_NODE || (previous_child.flags & Flags.Interpolate) == 0)
-          prefix = last_interpolated ? ' ' : '\n' + this.getIndent(level) + '| '
+          const last_interpolated = previous_child && (previous_child.node.nodeType == Node.TEXT_NODE || (previous_child.flags & Flags.Interpolate) != 0)
+          const is_first_child = child_index == 0
+          const can_interpolate = is_first_child || last_interpolated
+          if (is_first_child) prefix = ' '
+          else prefix = can_interpolate ? '' : '\n' + this.getIndent(level) + '| '
           value = child.nodeValue
           break
         case Node.ELEMENT_NODE:
           const element = child as HTMLElement
           {
-            const single_child = node.childNodes.length == 1
-            const can_interpolate = this.can_interpolate(element) && single_child == false
-            if (single_child) prefix = ": "
-            else if (can_interpolate) { prefix = " #["; new_flags |= Flags.Interpolate }
+            const is_single_child = node.childNodes.length == 1
+            const can_interpolate = (this.can_interpolate(element) && is_single_child == false) || ((flags & Flags.Interpolate) != 0)
+            if (is_single_child) prefix = ": "
+            else if (can_interpolate) { prefix = "#["; new_flags |= Flags.Interpolate }
             else prefix = "\n" + this.getIndent(level)
           }
           {
