@@ -60,3 +60,4 @@ if (args.version)
 convert(args)
     .then(result => print(result))
     .catch(err => print(err, 1));
+//# sourceMappingURL=cli.js.map

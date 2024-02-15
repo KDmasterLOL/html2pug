@@ -120,10 +120,17 @@ class Parser {
           {
             const last_interpolated = previous_child && ((previous_child.flags & Flags.Interpolate) != 0)
             const can_interpolate = (child_flags & Flags.FirstChild) || last_interpolated
-            if (can_interpolate) prefix = child_flags & Flags.FirstChild ? ' ' : ''
+            const can_create_text_block =
+              (child_flags & (Flags.PreWrap | Flags.FirstChild)) == (Flags.PreWrap | Flags.FirstChild)
+              &&
+              (child.nodeValue.includes('\n') || (child_flags & Flags.SingleChild) == 0)
+
+            if (can_create_text_block) prefix = '.\n' + this.getIndent(level)
+            else if (can_interpolate) prefix = child_flags & Flags.FirstChild ? ' ' : ''
             else prefix = '\n' + this.getIndent(level) + '| '
           }
           value = child.nodeValue
+          if (child_flags & Flags.PreWrap) value = value.replaceAll('\n', '\n' + this.getIndent(level))
           break
         case Node.ELEMENT_NODE:
           const element = child as HTMLElement

@@ -48,3 +48,4 @@ export default (sourceHtml, options = {}) => {
     });
     return pugify.parse();
 };
+//# sourceMappingURL=index.js.map

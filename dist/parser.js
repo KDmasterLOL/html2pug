@@ -72,6 +72,7 @@ class Parser {
             Flags[Flags["Interpolate"] = 2] = "Interpolate";
             Flags[Flags["SingleChild"] = 4] = "SingleChild";
             Flags[Flags["FirstChild"] = 8] = "FirstChild";
+            Flags[Flags["TextBlock"] = 16] = "TextBlock";
         })(Flags || (Flags = {}));
         let result = "";
         let tree_stack = [{ node: tree, child_index: 0, flags: Flags.None }], previous_child;
@@ -97,18 +98,27 @@ class Parser {
                 ||
                     (node.nodeName.toLowerCase() == "pre"))
                 child_flags |= Flags.PreWrap;
+            if (false)
+                child_flags |= Flags.TextBlock; // TODO:
             switch (child.nodeType) {
                 case Node.TEXT_NODE:
                     child_flags |= Flags.Interpolate;
                     {
                         const last_interpolated = previous_child && ((previous_child.flags & Flags.Interpolate) != 0);
                         const can_interpolate = (child_flags & Flags.FirstChild) || last_interpolated;
-                        if (can_interpolate)
+                        const can_create_text_block = (child_flags & (Flags.PreWrap | Flags.FirstChild)) == (Flags.PreWrap | Flags.FirstChild)
+                            &&
+                                (child.nodeValue.includes('\n') || (child_flags & Flags.SingleChild) == 0);
+                        if (can_create_text_block)
+                            prefix = '.\n' + this.getIndent(level);
+                        else if (can_interpolate)
                             prefix = child_flags & Flags.FirstChild ? ' ' : '';
                         else
                             prefix = '\n' + this.getIndent(level) + '| ';
                     }
                     value = child.nodeValue;
+                    if (child_flags & Flags.PreWrap)
+                        value = value.replaceAll('\n', '\n' + this.getIndent(level));
                     break;
                 case Node.ELEMENT_NODE:
                     const element = child;
@@ -128,6 +138,11 @@ class Parser {
                 child_index: 0,
                 flags: child_flags
             });
+            if (child_flags & Flags.TextBlock) {
+                const new_line = '\n' + this.getIndent(level + 1);
+                prefix = child_flags & Flags.FirstChild ? '.' + new_line : '';
+                value.replaceAll('\n', new_line);
+            }
             result += prefix + value;
             last_stack_entry.child_index += 1;
         }
@@ -264,3 +279,4 @@ class Parser {
     }
 }
 export default Parser;
+//# sourceMappingURL=parser.js.map
