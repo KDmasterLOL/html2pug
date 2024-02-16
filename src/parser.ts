@@ -9,6 +9,35 @@ const DIV_NODE = 'div'
 const COMMENT_NODE = '#comment'
 const COMMENT_NODE_PUG = '//'
 
+enum Flags {
+  None = 0,
+  PreWrap = 1 << 0,
+  Interpolate = 1 << 1,
+  SingleChild = 1 << 2,
+  FirstChild = 1 << 3,
+  TextBlock = 1 << 4,
+}
+// const last_interpolated = previous_child && ((previous_child.flags & Flags.Interpolate) != 0)
+type tree_value = { node: Node, child_index: number, flags: Flags }
+function hang_flags({ node, flags, child_index }: tree_value, previous_child: tree_value): Flags {
+  let new_flags = Flags.None
+  if (child_index == 0) new_flags |= Flags.FirstChild
+  if (
+    (node.nodeType == Node.TEXT_NODE && (
+      previous_child == undefined || (
+        previous_child.node.nodeType == Node.TEXT_NODE || previous_child.flags & Flags.Interpolate
+      )))
+    ||
+    ((flags & Flags.Interpolate) || this.can_interpolate(node as HTMLElement))) new_flags |= Flags.Interpolate
+  if (node.childNodes.length == 1) new_flags |= Flags.SingleChild
+  if (
+    (flags & Flags.PreWrap)
+    ||
+    (node.nodeName.toLowerCase() == "pre")
+  ) new_flags |= Flags.PreWrap
+  if (false) new_flags |= Flags.TextBlock // TODO:
+  return new_flags
+}
 const hasSingleTextNodeChild = node => {
   return (
     node.childNodes &&
@@ -77,46 +106,34 @@ class Parser {
       default: node.childNodes.forEach(n => this.simple_node_convert(n, level + 1))
     }
   }
-  convert_tree(tree: Node) {
-    enum Flags {
-      None = 0,
-      PreWrap = 1 << 0,
-      Interpolate = 1 << 1,
-      SingleChild = 1 << 2,
-      FirstChild = 1 << 3,
-      TextBlock = 1 << 4,
-    }
-    type tree_value = { node: Node, child_index: number, flags: Flags }
 
+  convert_tree(tree: Node) {
     let result = ""
+    const can_continue = ({ node, flags, child_index }: tree_value) => {
+      const is_text_node = node.nodeType == Node.TEXT_NODE
+      if (is_text_node || child_index >= node.childNodes.length) { // Text node or is out of children
+        if (!is_text_node && (flags & Flags.Interpolate)) result += "]" // End interpolation
+        return false
+      }
+      return true
+    }
     let tree_stack: tree_value[] = [{ node: tree, child_index: 0, flags: Flags.None }], previous_child: tree_value
     while (tree_stack.length > 0) {
       const last_stack_entry = tree_stack[tree_stack.length - 1]
       const { node, child_index, flags } = last_stack_entry
 
-      {
-        const is_text_node = node.nodeType == Node.TEXT_NODE
-        if (is_text_node || child_index >= node.childNodes.length) {
-          if (is_text_node == false && (flags & Flags.Interpolate)) result += "]" // End interpolation
-          previous_child = tree_stack.pop(); continue
-        } // Check if out of childrens
-      }
+      if (can_continue(last_stack_entry) == false) { previous_child = tree_stack.pop(); continue }
 
       const child = node.childNodes[child_index], level = tree_stack.length
-      let prefix = "", value = "", child_flags = Flags.None
 
-      if (child_index == 0) child_flags |= Flags.FirstChild
-      if (node.childNodes.length == 1) child_flags |= Flags.SingleChild
-      if (
-        (flags & Flags.PreWrap)
-        ||
-        (node.nodeName.toLowerCase() == "pre")
-      ) child_flags |= Flags.PreWrap
-      if (false) child_flags |= Flags.TextBlock // TODO:
+      let prefix = "", value = "", child_flags = hang_flags(last_stack_entry, previous_child), child_entry = {
+        node: child,
+        child_index: 0,
+        flags: child_flags
+      }
 
       switch (child.nodeType) {
         case Node.TEXT_NODE:
-          child_flags |= Flags.Interpolate
           {
             const last_interpolated = previous_child && ((previous_child.flags & Flags.Interpolate) != 0)
             const can_interpolate = (child_flags & Flags.FirstChild) || last_interpolated
@@ -135,9 +152,7 @@ class Parser {
         case Node.ELEMENT_NODE:
           const element = child as HTMLElement
           if (child_flags & Flags.SingleChild) prefix = ": "
-          else if ((flags & Flags.Interpolate) || this.can_interpolate(element)) {
-            prefix = "#["; child_flags |= Flags.Interpolate
-          }
+          else if (child_flags & Flags.Interpolate) prefix = "#["
           else prefix = "\n" + this.getIndent(level)
 
           value = element.tagName.toLowerCase()
@@ -160,6 +175,21 @@ class Parser {
 
     }
     return result
+  }
+  convert_text_node({ node, flags, child_index }: tree_value, level): { value: string, prefix: string } {
+    const can_interpolate = (flags & Flags.FirstChild) || last_interpolated
+    const can_create_text_block =
+      (flags & (Flags.PreWrap | Flags.FirstChild)) == (Flags.PreWrap | Flags.FirstChild)
+      &&
+      (node.nodeValue.includes('\n') || (flags & Flags.SingleChild) == 0)
+
+    let prefix = '\n' + this.getIndent(level) + '| '
+    if (can_create_text_block) prefix = '.\n' + this.getIndent(level)
+    else if (flags & Flags.Interpolate) prefix = flags & Flags.FirstChild ? ' ' : ''
+
+    let value = node.nodeValue
+    if (flags & Flags.PreWrap) value = value.replaceAll('\n', '\n' + this.getIndent(level))
+    return { value, prefix }
   }
   /*
    * Returns a Pug node name with all attributes set in parentheses.
