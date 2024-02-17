@@ -1,10 +1,5 @@
 import { JSDOM } from "jsdom";
 const Node = new JSDOM().window.Node;
-const DOCUMENT_TYPE_NODE = '#documentType';
-const TEXT_NODE = '#text';
-const DIV_NODE = 'div';
-const COMMENT_NODE = '#comment';
-const COMMENT_NODE_PUG = '//';
 var Flags;
 (function (Flags) {
     Flags[Flags["None"] = 0] = "None";
@@ -14,35 +9,6 @@ var Flags;
     Flags[Flags["FirstChild"] = 8] = "FirstChild";
     Flags[Flags["TextBlock"] = 16] = "TextBlock";
 })(Flags || (Flags = {}));
-function can_interpolate(element) {
-    const is_inline_element = element.matches(this.inline_elements);
-    const has_only_inline_elements = element.querySelector(`*:not(${this.inline_elements})`) == null;
-    const has_not_block_text = this.has_block_text(element) == false;
-    return is_inline_element && has_only_inline_elements && has_not_block_text;
-}
-function hang_flags({ node, flags, child_index }, previous_child) {
-    let new_flags = Flags.None;
-    if (child_index == 0)
-        new_flags |= Flags.FirstChild;
-    if ((node.nodeType == Node.TEXT_NODE && (previous_child == undefined || (previous_child.node.nodeType == Node.TEXT_NODE || previous_child.flags & Flags.Interpolate)))
-        ||
-            ((flags & Flags.Interpolate) || can_interpolate(node)))
-        new_flags |= Flags.Interpolate;
-    if (node.childNodes.length == 1)
-        new_flags |= Flags.SingleChild;
-    if ((flags & Flags.PreWrap)
-        ||
-            (node.nodeName.toLowerCase() == "pre"))
-        new_flags |= Flags.PreWrap;
-    if (false)
-        new_flags |= Flags.TextBlock; // TODO:
-    return new_flags;
-}
-const hasSingleTextNodeChild = node => {
-    return (node.childNodes &&
-        node.childNodes.length === 1 &&
-        node.childNodes[0].nodeName === TEXT_NODE);
-};
 class Parser {
     pug = '';
     root;
@@ -60,6 +26,34 @@ class Parser {
             this.pug = this.convert_tree(this.root);
         return this.pug.substring(1);
     }
+    can_interpolate(node, previous_child) {
+        if (previous_child?.flags & Flags.Interpolate)
+            return true;
+        switch (node.nodeType) {
+            case Node.TEXT_NODE:
+                return previous_child == undefined || previous_child.node.nodeType == Node.TEXT_NODE;
+            case Node.ELEMENT_NODE:
+                const element = node;
+                const is_inline_element = element.matches(this.inline_elements);
+                const has_only_inline_elements = element.querySelector(`*:not(${this.inline_elements})`) == null;
+                return is_inline_element && has_only_inline_elements;
+        }
+        return false;
+    }
+    hang_flags({ node, flags, child_index }, previous_child) {
+        let new_flags = Flags.None;
+        if (child_index == 0)
+            new_flags |= Flags.FirstChild;
+        if (this.can_interpolate(node, previous_child))
+            new_flags |= Flags.Interpolate;
+        if (node.childNodes.length == 1)
+            new_flags |= Flags.SingleChild;
+        if ((flags & Flags.PreWrap)
+            ||
+                (node.nodeName.toLowerCase() == "pre"))
+            new_flags |= Flags.PreWrap;
+        return new_flags;
+    }
     has_block_expansion(element) {
         return element.childNodes.length == 1 && element.childNodes[0].nodeType == Node.ELEMENT_NODE; // Has only only one child node that is `ELEMENT_NODE`
     }
@@ -71,12 +65,6 @@ class Parser {
             else
                 b = b.parentElement;
         return false;
-    }
-    has_block_text(element) {
-        const is_pre_wrap = this.has_pre_wrap(element);
-        const has_newlines = (el) => el.textContent.includes('\n');
-        const has_multiline_elements = [...element.children].some(el => this.has_block_text(el) || can_interpolate(el) == false);
-        return is_pre_wrap && has_newlines(element) && has_multiline_elements == false;
     }
     simple_node_convert(node, level = 0) {
         const add = (str) => this.pug += '\n' + this.getIndent(level) + str;
@@ -106,12 +94,14 @@ class Parser {
         while (tree_stack.length > 0) {
             const last_stack_entry = tree_stack[tree_stack.length - 1];
             const { node, child_index, flags } = last_stack_entry;
+            if (child_index == 0)
+                previous_child = undefined;
             if (can_continue(last_stack_entry) == false) {
                 previous_child = tree_stack.pop();
                 continue;
             }
             const child = node.childNodes[child_index], level = tree_stack.length;
-            let prefix = "", value = "", child_flags = hang_flags(last_stack_entry, previous_child), child_entry = {
+            let prefix = "", value = "", child_flags = this.hang_flags(last_stack_entry, previous_child), child_entry = {
                 node: child,
                 child_index: 0,
                 flags: child_flags
@@ -208,7 +198,7 @@ class Parser {
         const is_true = val => val == true;
         const has_selector = ['id', 'class'].map(attr_name => node.hasAttribute(attr_name)).some(is_true);
         {
-            const has_shorhand = (tagName === DIV_NODE) && has_selector; // Shorhand for div if a selector is present e.g. div#form() -> #form()
+            const has_shorhand = (tagName === 'div') && has_selector; // Shorhand for div if a selector is present e.g. div#form() -> #form()
             if (has_shorhand == false)
                 pugNode = tagName.toLowerCase(); // Don't add div tag if shorhand present
         }
@@ -241,68 +231,20 @@ class Parser {
         const multiline = lines.map(line => `${indentChild}${line}`).join('\n');
         return `${result}${blockChar}\n${multiline}`;
     }
-    /**
-     * createDoctype formats a #documentType element
-     */
     createDoctype(node, level) {
+        throw new Error("Not impelemented"); // TODO: Implement doctype conversion
         const indent = this.getIndent(level);
         return `${indent}doctype html`;
     }
-    /**
-     * createComment formats a #comment element.
-     *
-     * Block comments in Pug don't require the dot '.' character.
-     */
     createComment(node, level) {
-        return this.formatPugNode(COMMENT_NODE_PUG, node.data, level, '');
-    }
-    /**
-     * createText formats a #text element.
-     *
-     * A #text element containing only line breaks (\n) indicates
-     * unnecessary whitespace between elements that should be removed.
-     *
-     * Actual text in a single #text element has no significant
-     * whitespace and should be treated as inline text.
-     */
-    createText(node, level) {
-        const value = node.nodeValue;
-        const indent = this.getIndent(level);
-        let result = "";
-        { // Omit line breaks between HTML elements
-            const is_line_break = /^[\n]+$/.test(value);
-            if (is_line_break == false)
-                result = `${indent}| ${value}`;
-        }
-        return result;
+        throw new Error("Not impelemented"); // TODO: Implement commentary conversion
     }
     /**
      * createElement formats a generic HTML element.
      */
     createElement(node, level) {
         const pugNode = this.convert_html_element_open_tag(node);
-        const value = hasSingleTextNodeChild(node)
-            ? node.childNodes[0].nodeValue
-            : node.nodeValue;
-        return this.formatPugNode(pugNode, value || "", level);
-    }
-    my_parseNode(node, level) {
-        const { nodeName } = node;
-        switch (nodeName) {
-            case DOCUMENT_TYPE_NODE: return this.createDoctype(node, level);
-            case COMMENT_NODE: return this.createComment(node, level);
-            case TEXT_NODE: return this.createText(node, level);
-            default: return this.createElement(node, level);
-        }
-    }
-    parseNode(node, level) {
-        const { nodeName } = node;
-        switch (nodeName) {
-            case DOCUMENT_TYPE_NODE: return this.createDoctype(node, level);
-            case COMMENT_NODE: return this.createComment(node, level);
-            case TEXT_NODE: return this.createText(node, level);
-            default: return this.createElement(node, level);
-        }
+        throw new Error("Not impelemented"); // TODO: Implement element conversion
     }
 }
 export default Parser;
