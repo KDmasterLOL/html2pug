@@ -5,6 +5,39 @@ const TEXT_NODE = '#text';
 const DIV_NODE = 'div';
 const COMMENT_NODE = '#comment';
 const COMMENT_NODE_PUG = '//';
+var Flags;
+(function (Flags) {
+    Flags[Flags["None"] = 0] = "None";
+    Flags[Flags["PreWrap"] = 1] = "PreWrap";
+    Flags[Flags["Interpolate"] = 2] = "Interpolate";
+    Flags[Flags["SingleChild"] = 4] = "SingleChild";
+    Flags[Flags["FirstChild"] = 8] = "FirstChild";
+    Flags[Flags["TextBlock"] = 16] = "TextBlock";
+})(Flags || (Flags = {}));
+function can_interpolate(element) {
+    const is_inline_element = element.matches(this.inline_elements);
+    const has_only_inline_elements = element.querySelector(`*:not(${this.inline_elements})`) == null;
+    const has_not_block_text = this.has_block_text(element) == false;
+    return is_inline_element && has_only_inline_elements && has_not_block_text;
+}
+function hang_flags({ node, flags, child_index }, previous_child) {
+    let new_flags = Flags.None;
+    if (child_index == 0)
+        new_flags |= Flags.FirstChild;
+    if ((node.nodeType == Node.TEXT_NODE && (previous_child == undefined || (previous_child.node.nodeType == Node.TEXT_NODE || previous_child.flags & Flags.Interpolate)))
+        ||
+            ((flags & Flags.Interpolate) || can_interpolate(node)))
+        new_flags |= Flags.Interpolate;
+    if (node.childNodes.length == 1)
+        new_flags |= Flags.SingleChild;
+    if ((flags & Flags.PreWrap)
+        ||
+            (node.nodeName.toLowerCase() == "pre"))
+        new_flags |= Flags.PreWrap;
+    if (false)
+        new_flags |= Flags.TextBlock; // TODO:
+    return new_flags;
+}
 const hasSingleTextNodeChild = node => {
     return (node.childNodes &&
         node.childNodes.length === 1 &&
@@ -27,12 +60,6 @@ class Parser {
             this.pug = this.convert_tree(this.root);
         return this.pug.substring(1);
     }
-    can_interpolate(element) {
-        const is_inline_element = element.matches(this.inline_elements);
-        const has_only_inline_elements = element.querySelector(`*:not(${this.inline_elements})`) == null;
-        const has_not_block_text = this.has_block_text(element) == false;
-        return is_inline_element && has_only_inline_elements && has_not_block_text;
-    }
     has_block_expansion(element) {
         return element.childNodes.length == 1 && element.childNodes[0].nodeType == Node.ELEMENT_NODE; // Has only only one child node that is `ELEMENT_NODE`
     }
@@ -48,7 +75,7 @@ class Parser {
     has_block_text(element) {
         const is_pre_wrap = this.has_pre_wrap(element);
         const has_newlines = (el) => el.textContent.includes('\n');
-        const has_multiline_elements = [...element.children].some(el => this.has_block_text(el) || this.can_interpolate(el) == false);
+        const has_multiline_elements = [...element.children].some(el => this.has_block_text(el) || can_interpolate(el) == false);
         return is_pre_wrap && has_newlines(element) && has_multiline_elements == false;
     }
     simple_node_convert(node, level = 0) {
@@ -65,44 +92,32 @@ class Parser {
         }
     }
     convert_tree(tree) {
-        let Flags;
-        (function (Flags) {
-            Flags[Flags["None"] = 0] = "None";
-            Flags[Flags["PreWrap"] = 1] = "PreWrap";
-            Flags[Flags["Interpolate"] = 2] = "Interpolate";
-            Flags[Flags["SingleChild"] = 4] = "SingleChild";
-            Flags[Flags["FirstChild"] = 8] = "FirstChild";
-            Flags[Flags["TextBlock"] = 16] = "TextBlock";
-        })(Flags || (Flags = {}));
         let result = "";
+        const can_continue = ({ node, flags, child_index }) => {
+            const is_text_node = node.nodeType == Node.TEXT_NODE;
+            if (is_text_node || child_index >= node.childNodes.length) { // Text node or is out of children
+                if (!is_text_node && (flags & Flags.Interpolate))
+                    result += "]"; // End interpolation
+                return false;
+            }
+            return true;
+        };
         let tree_stack = [{ node: tree, child_index: 0, flags: Flags.None }], previous_child;
         while (tree_stack.length > 0) {
             const last_stack_entry = tree_stack[tree_stack.length - 1];
             const { node, child_index, flags } = last_stack_entry;
-            {
-                const is_text_node = node.nodeType == Node.TEXT_NODE;
-                if (is_text_node || child_index >= node.childNodes.length) {
-                    if (is_text_node == false && (flags & Flags.Interpolate))
-                        result += "]"; // End interpolation
-                    previous_child = tree_stack.pop();
-                    continue;
-                } // Check if out of childrens
+            if (can_continue(last_stack_entry) == false) {
+                previous_child = tree_stack.pop();
+                continue;
             }
             const child = node.childNodes[child_index], level = tree_stack.length;
-            let prefix = "", value = "", child_flags = Flags.None;
-            if (child_index == 0)
-                child_flags |= Flags.FirstChild;
-            if (node.childNodes.length == 1)
-                child_flags |= Flags.SingleChild;
-            if ((flags & Flags.PreWrap)
-                ||
-                    (node.nodeName.toLowerCase() == "pre"))
-                child_flags |= Flags.PreWrap;
-            if (false)
-                child_flags |= Flags.TextBlock; // TODO:
+            let prefix = "", value = "", child_flags = hang_flags(last_stack_entry, previous_child), child_entry = {
+                node: child,
+                child_index: 0,
+                flags: child_flags
+            };
             switch (child.nodeType) {
                 case Node.TEXT_NODE:
-                    child_flags |= Flags.Interpolate;
                     {
                         const last_interpolated = previous_child && ((previous_child.flags & Flags.Interpolate) != 0);
                         const can_interpolate = (child_flags & Flags.FirstChild) || last_interpolated;
@@ -124,10 +139,8 @@ class Parser {
                     const element = child;
                     if (child_flags & Flags.SingleChild)
                         prefix = ": ";
-                    else if ((flags & Flags.Interpolate) || this.can_interpolate(element)) {
+                    else if (child_flags & Flags.Interpolate)
                         prefix = "#[";
-                        child_flags |= Flags.Interpolate;
-                    }
                     else
                         prefix = "\n" + this.getIndent(level);
                     value = element.tagName.toLowerCase();
@@ -147,6 +160,20 @@ class Parser {
             last_stack_entry.child_index += 1;
         }
         return result;
+    }
+    convert_text_node({ node, flags }, level) {
+        const can_create_text_block = (flags & (Flags.PreWrap | Flags.FirstChild)) == (Flags.PreWrap | Flags.FirstChild)
+            &&
+                (node.nodeValue.includes('\n') || (flags & Flags.SingleChild) == 0);
+        let prefix = '\n' + this.getIndent(level) + '| ';
+        if (can_create_text_block)
+            prefix = '.\n' + this.getIndent(level);
+        else if (flags & Flags.Interpolate)
+            prefix = flags & Flags.FirstChild ? ' ' : '';
+        let value = node.nodeValue;
+        if (flags & Flags.PreWrap)
+            value = value.replaceAll('\n', '\n' + this.getIndent(level));
+        return { value, prefix };
     }
     /*
      * Returns a Pug node name with all attributes set in parentheses.

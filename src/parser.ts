@@ -19,6 +19,12 @@ enum Flags {
 }
 // const last_interpolated = previous_child && ((previous_child.flags & Flags.Interpolate) != 0)
 type tree_value = { node: Node, child_index: number, flags: Flags }
+function can_interpolate(element: Element): boolean {
+  const is_inline_element = element.matches(this.inline_elements)
+  const has_only_inline_elements = element.querySelector(`*:not(${this.inline_elements})`) == null
+  const has_not_block_text = this.has_block_text(element) == false
+  return is_inline_element && has_only_inline_elements && has_not_block_text
+}
 function hang_flags({ node, flags, child_index }: tree_value, previous_child: tree_value): Flags {
   let new_flags = Flags.None
   if (child_index == 0) new_flags |= Flags.FirstChild
@@ -28,7 +34,8 @@ function hang_flags({ node, flags, child_index }: tree_value, previous_child: tr
         previous_child.node.nodeType == Node.TEXT_NODE || previous_child.flags & Flags.Interpolate
       )))
     ||
-    ((flags & Flags.Interpolate) || this.can_interpolate(node as HTMLElement))) new_flags |= Flags.Interpolate
+    ((flags & Flags.Interpolate) || can_interpolate(node as HTMLElement)))
+    new_flags |= Flags.Interpolate
   if (node.childNodes.length == 1) new_flags |= Flags.SingleChild
   if (
     (flags & Flags.PreWrap)
@@ -76,12 +83,6 @@ class Parser {
     return this.pug.substring(1)
   }
 
-  can_interpolate(element: Element) {
-    const is_inline_element = element.matches(this.inline_elements)
-    const has_only_inline_elements = element.querySelector(`*:not(${this.inline_elements})`) == null
-    const has_not_block_text = this.has_block_text(element) == false
-    return is_inline_element && has_only_inline_elements && has_not_block_text
-  }
   has_block_expansion(element: Element) {
     return element.childNodes.length == 1 && element.childNodes[0].nodeType == Node.ELEMENT_NODE // Has only only one child node that is `ELEMENT_NODE`
   }
@@ -92,7 +93,7 @@ class Parser {
   has_block_text(element: Element) {
     const is_pre_wrap = this.has_pre_wrap(element)
     const has_newlines = (el: Element) => el.textContent.includes('\n')
-    const has_multiline_elements = [...element.children].some(el => this.has_block_text(el) || this.can_interpolate(el) == false)
+    const has_multiline_elements = [...element.children].some(el => this.has_block_text(el) || can_interpolate(el) == false)
 
     return is_pre_wrap && has_newlines(element) && has_multiline_elements == false
   }
@@ -176,8 +177,7 @@ class Parser {
     }
     return result
   }
-  convert_text_node({ node, flags, child_index }: tree_value, level): { value: string, prefix: string } {
-    const can_interpolate = (flags & Flags.FirstChild) || last_interpolated
+  convert_text_node({ node, flags }: tree_value, level): { value: string, prefix: string } {
     const can_create_text_block =
       (flags & (Flags.PreWrap | Flags.FirstChild)) == (Flags.PreWrap | Flags.FirstChild)
       &&
