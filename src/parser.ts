@@ -71,6 +71,9 @@ class Parser {
       ||
       (node.nodeName.toLowerCase() == "pre")
     ) new_flags |= Flags.PreWrap
+    if ((flags & (Flags.PreWrap | Flags.FirstChild)) == (Flags.PreWrap | Flags.FirstChild)
+      &&
+      (node.nodeValue.includes('\n') || (flags & Flags.SingleChild) == 0)) new_flags |= Flags.TextBlock // TODO: Check condition if right
     return new_flags
   }
 
@@ -165,17 +168,12 @@ class Parser {
     return result
   }
   convert_text_node({ node, flags }: tree_value, level): { value: string, prefix: string } {
-    const can_create_text_block =
-      (flags & (Flags.PreWrap | Flags.FirstChild)) == (Flags.PreWrap | Flags.FirstChild)
-      &&
-      (node.nodeValue.includes('\n') || (flags & Flags.SingleChild) == 0)
-
     let prefix = '\n' + this.getIndent(level) + '| '
-    if (can_create_text_block) prefix = '.\n' + this.getIndent(level)
+    if (flags & Flags.TextBlock) prefix = '.\n' + this.getIndent(level) // TODO: Make for case when text is not first element
     else if (flags & Flags.Interpolate) prefix = flags & Flags.FirstChild ? ' ' : ''
 
     let value = node.nodeValue
-    if (flags & Flags.PreWrap) value = value.replaceAll('\n', '\n' + this.getIndent(level))
+    if (flags & Flags.PreWrap) value = value.replaceAll('\n', '\n' + this.getIndent(level)) // TODO: Make for case when text is not first element: When text not first in text block then level will be `level + 1`
     return { value, prefix }
   }
   /*
