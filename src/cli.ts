@@ -18,7 +18,7 @@ const help = `
     -c, --commas         Use commas to separate attributes
     -d, --double-quotes  Use double quotes for attribute values
     -i, --interpolate    Use to interpolate inline tags
-    
+
     -h, --help           Show this page
     -v, --version        Show version
 
@@ -30,17 +30,7 @@ const help = `
     html2pug < example.html > example.pug
 `
 
-function print(text, exitCode = 0) { // print logs to stdout and exits the process
-  if (exitCode === 1) console.error(text)
-  else console.log(text)
-  process.exit(exitCode)
-}
 
-async function convert(options = {}): Promise<string | void> { // convert uses the stdin as input for the html2pug library
-  const stdin = await getStdin()
-  if (!stdin) return print(help)
-  return html2pug(stdin, options)
-}
 let args = parseArgs({
   options: {
     help: { type: 'boolean', short: 'h' },
@@ -50,12 +40,25 @@ let args = parseArgs({
     commas: { type: 'boolean', short: 'c' },
     doubleQuotes: { type: 'boolean', short: 'd' },
     url: { type: 'string' },
-    keep_attr: { type: 'boolean', short: 'a' }
+    keep_attr: { type: 'boolean', short: 'a' },
+    simple: { type: 'boolean', short: 's' }
   },
 }).values
+
+function print(text, exitCode = 0) { // print logs to stdout and exits the process
+  if (exitCode === 1) console.error(text)
+  else console.log(text)
+  process.exit(exitCode)
+}
+
 if (args.help) print(help)
 if (args.version) print(version)
 
+async function convert(options = {}): Promise<string | void> { // convert uses the stdin as input for the html2pug library
+  const stdin = await getStdin()
+  if (!stdin) return print(help)
+  return html2pug(stdin, options)
+}
 convert(args)
   .then(result => print(result))
   .catch(err => print(err, 1))
