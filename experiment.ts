@@ -1,6 +1,6 @@
 import { JSDOM } from 'jsdom'
 import { minify } from 'html-minifier'
-import html2pug from './dist/index.js'
+import html2pug from './src/index.ts'
 
 // const test_html = `<!DOCTYPE html>
 // <html lang="en">
@@ -44,5 +44,5 @@ const res = html2pug(minify(test_html, {
   collapseWhitespace: true,
   collapseBooleanAttributes: true,
   preserveLineBreaks: false,
-}), { simple: false })
+}), { simple: false, clean: false })
 console.log(res)
