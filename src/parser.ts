@@ -10,6 +10,7 @@ enum Flags {
   SingleChild = 1 << 2,
   FirstChild = 1 << 3,
   TextBlock = 1 << 4,
+  BlockExpansion = 1 << 5,
 }
 
 type tree_value = { node: Node, child_index: number, flags: Flags }
@@ -45,8 +46,8 @@ class Parser {
     return this.pug.substring(1)
   }
 
-  can_interpolate(node: Node, previous_child: tree_value | undefined): boolean {
-    if (previous_child?.flags & Flags.Interpolate) return true
+  can_interpolate(node: Node, parent_flags: Flags, previous_child: tree_value | undefined): boolean {
+    if (parent_flags & Flags.Interpolate || previous_child?.flags & Flags.Interpolate) return true
     switch (node.nodeType) {
       case Node.TEXT_NODE:
         return previous_child == undefined || previous_child.node.nodeType == Node.TEXT_NODE
@@ -60,30 +61,29 @@ class Parser {
     return false
 
   }
-
-  hang_flags({ node, flags, child_index }: tree_value, previous_child: tree_value): Flags {
-    let new_flags = Flags.None
-    if (child_index == 0) new_flags |= Flags.FirstChild
-    if (this.can_interpolate(node, previous_child)) new_flags |= Flags.Interpolate
-    if (node.childNodes.length == 1) new_flags |= Flags.SingleChild
-    if (
-      (flags & Flags.PreWrap)
-      ||
-      (node.nodeName.toLowerCase() == "pre")
-    ) new_flags |= Flags.PreWrap
-    if ((flags & (Flags.PreWrap | Flags.FirstChild)) == (Flags.PreWrap | Flags.FirstChild)
+  can_make_text_block(node: Node, flags: Flags): boolean {
+    if (node.nodeType != Node.TEXT_NODE) return false
+    return (
+      (flags & (Flags.PreWrap | Flags.FirstChild)) == (Flags.PreWrap | Flags.FirstChild)
       &&
-      (node.nodeValue.includes('\n') || (flags & Flags.SingleChild) == 0)) new_flags |= Flags.TextBlock // TODO: Check condition if right
+      (node.nodeValue.includes('\n') || (flags & Flags.SingleChild) == 0)) // TODO: Check condition if right
+  }
+  can_block_expansion(node: Node) { return node.childNodes.length == 1 && node.childNodes[0].nodeType == Node.ELEMENT_NODE }
+
+  hang_flags({ node, flags, child_index }: tree_value, previous_child: tree_value): Flags { // Get parent node and previous child of node
+    let new_flags = Flags.None
+
+    if (child_index == 0) new_flags |= Flags.FirstChild
+    if (node.childNodes.length == 1) new_flags |= Flags.SingleChild
+    if ((flags & Flags.PreWrap) || (node.nodeName.toLowerCase() == "pre")) new_flags |= Flags.PreWrap
+
+    const child_node = node.childNodes[child_index]
+    if (this.can_block_expansion(node)) new_flags |= Flags.BlockExpansion
+    else if (this.can_interpolate(child_node, flags, previous_child)) new_flags |= Flags.Interpolate
+    if (this.can_make_text_block(child_node, new_flags)) new_flags |= Flags.TextBlock // TODO: Check condition if right
     return new_flags
   }
 
-  has_block_expansion(element: Element) {
-    return element.childNodes.length == 1 && element.childNodes[0].nodeType == Node.ELEMENT_NODE // Has only only one child node that is `ELEMENT_NODE`
-  }
-  has_pre_wrap(node: Node) { // If node is PRE element or has parent PRE element then `white-space: pre-wrap` enabled
-    let b = node; while (b != undefined) if (b.nodeName == "PRE") return true; else b = b.parentElement
-    return false
-  }
 
   simple_node_convert(node: Node, level: number = 0) {
     const add = (str: string) => this.pug += '\n' + this.getIndent(level) + str
@@ -108,65 +108,44 @@ class Parser {
     let tree_stack: tree_value[] = [{ node: tree, child_index: 0, flags: Flags.None }], previous_child: tree_value | undefined
     while (tree_stack.length > 0) {
       const last_stack_entry = tree_stack[tree_stack.length - 1]
-      const { node, child_index, flags } = last_stack_entry
+      const { node, child_index } = last_stack_entry
 
       if (child_index == 0) previous_child = undefined
       if (can_continue(last_stack_entry) == false) { previous_child = tree_stack.pop(); continue }
 
       const child = node.childNodes[child_index], level = tree_stack.length
 
-      let prefix = "", value = "", child_flags = this.hang_flags(last_stack_entry, previous_child), child_entry = {
+      let prefix = "", value = "", child_entry = {
         node: child,
         child_index: 0,
-        flags: child_flags
+        flags: this.hang_flags(last_stack_entry, previous_child)
       }
 
       switch (child.nodeType) {
-        case Node.TEXT_NODE:
-          {
-            // TODO: Replace block of code to one call of method
-            const last_interpolated = previous_child && ((previous_child.flags & Flags.Interpolate) != 0)
-            const can_interpolate = (child_flags & Flags.FirstChild) || last_interpolated
-            const can_create_text_block =
-              (child_flags & (Flags.PreWrap | Flags.FirstChild)) == (Flags.PreWrap | Flags.FirstChild)
-              &&
-              (child.nodeValue.includes('\n') || (child_flags & Flags.SingleChild) == 0)
-
-            if (can_create_text_block) prefix = '.\n' + this.getIndent(level)
-            else if (can_interpolate) prefix = child_flags & Flags.FirstChild ? ' ' : ''
-            else prefix = '\n' + this.getIndent(level) + '| '
-          }
-          value = child.nodeValue
-          if (child_flags & Flags.PreWrap) value = value.replaceAll('\n', '\n' + this.getIndent(level))
+        case Node.TEXT_NODE: ({ prefix, value } = this.convert_text_node(child_entry, level))
           break
-        case Node.ELEMENT_NODE:
-          // TODO: Replace block of code to one call of method
-          const element = child as HTMLElement
-          if (child_flags & Flags.SingleChild) prefix = ": "
-          else if (child_flags & Flags.Interpolate) prefix = "#["
-          else prefix = "\n" + this.getIndent(level)
-
-          value = element.tagName.toLowerCase()
-
+        case Node.ELEMENT_NODE: ({ prefix, value } = this.convert_element_node(child_entry, level))
           break
       }
-      tree_stack.push({
-        node: child,
-        child_index: 0,
-        flags: child_flags
-      })
+      tree_stack.push(child_entry)
 
-      if (child_flags & Flags.TextBlock) {
-        const new_line = '\n' + this.getIndent(level + 1)
-        prefix = child_flags & Flags.FirstChild ? '.' + new_line : ''
-        value.replaceAll('\n', new_line)
-      }
       result += prefix + value
       last_stack_entry.child_index += 1
 
     }
     return result
   }
+
+  convert_element_node({ node, flags }: tree_value, level: number): { value: string, prefix: string } {
+    const element = node as HTMLElement
+    let prefix = "\n" + this.getIndent(level), value = this.convert_html_element_open_tag(element)
+
+    if (flags & Flags.BlockExpansion) prefix = ": "
+    else if (flags & Flags.Interpolate) prefix = "#["
+
+    return { value, prefix }
+  }
+
   convert_text_node({ node, flags }: tree_value, level): { value: string, prefix: string } {
     let prefix = '\n' + this.getIndent(level) + '| '
     if (flags & Flags.TextBlock) prefix = '.\n' + this.getIndent(level) // TODO: Make for case when text is not first element
@@ -176,9 +155,6 @@ class Parser {
     if (flags & Flags.PreWrap) value = value.replaceAll('\n', '\n' + this.getIndent(level)) // TODO: Make for case when text is not first element: When text not first in text block then level will be `level + 1`
     return { value, prefix }
   }
-  /*
-   * Returns a Pug node name with all attributes set in parentheses.
-   */
   convert_attributes(attributes: NamedNodeMap): string {
     let result = ""
 
@@ -199,23 +175,18 @@ class Parser {
       return result
     }
   }
-  convert_html_element_open_tag(node: Element): string {
-    const { tagName, attributes } = node
-    let pugNode = ""
-
-    const is_true = val => val == true
-    const has_selector = ['id', 'class'].map(attr_name => node.hasAttribute(attr_name)).some(is_true);
-
+  convert_html_element_open_tag(element: Element): string {
+    const { tagName, attributes } = element
+    let open_tag = tagName.toLowerCase()
     {
+      const has_selector =
+        ['id', 'class'].map(attr_name => element.hasAttribute(attr_name)).some(val => val == true)
       const has_shorhand = (tagName === 'div') && has_selector // Shorhand for div if a selector is present e.g. div#form() -> #form()
-      if (has_shorhand == false) pugNode = tagName.toLowerCase() // Don't add div tag if shorhand present
+      if (has_shorhand) open_tag = "."
     }
-    {
-      const has_attributes = has_selector == true || attributes.length != 0
-      if (has_attributes) pugNode += this.convert_attributes(node.attributes)
-    }
+    if (attributes.length != 0) open_tag += this.convert_attributes(element.attributes)
 
-    return pugNode
+    return open_tag
   }
 
   /**
