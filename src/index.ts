@@ -12,14 +12,7 @@ const defaultOptions = {
   inlineCollapse: true,
   keep_attr: true,
   clean: true,
-  simple: true,
-
-  // html-minifier options
-  caseSensitive: true,
-  removeEmptyAttributes: true,
-  collapseWhitespace: true,
-  collapseBooleanAttributes: true,
-  preserveLineBreaks: true,
+  simple: false,
 }
 
 function clean(DOM: JSDOM) {
@@ -33,9 +26,15 @@ function clean(DOM: JSDOM) {
 
 }
 export default (sourceHtml, options = {}) => {
-  // Minify source HTML
   const opts = { ...defaultOptions, ...options }
-  const html = minify(sourceHtml, opts)
+
+  const html = minify(sourceHtml, {
+    caseSensitive: true,
+    removeEmptyAttributes: true,
+    collapseWhitespace: true,
+    collapseBooleanAttributes: true,
+    preserveLineBreaks: false
+  })
 
   const { fragment, tabs, commas, doubleQuotes, inlineCollapse, keep_attr, clean, simple } = opts
 

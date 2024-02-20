@@ -36,13 +36,7 @@ bsd i am </span></code></pre>`
 const test_fragment = `string of text node`
 
 
+// const test_html = await (await fetch('http://example.com')).text()
 
-
-const res = html2pug(minify(test_html, {
-  caseSensitive: true,
-  removeEmptyAttributes: true,
-  collapseWhitespace: true,
-  collapseBooleanAttributes: true,
-  preserveLineBreaks: false,
-}), { simple: false, clean: false })
+const res = html2pug(test_html, { simple: false, clean: false }) // TODO: Fix problems without cleaning
 console.log(res)
