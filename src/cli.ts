@@ -33,32 +33,30 @@ const help = `
 
 let args = parseArgs({
   options: {
+    // Arguments for CLI
     help: { type: 'boolean', short: 'h' },
     version: { type: 'boolean', short: 'v' },
+
+    // Arguments for converter
     fragment: { type: 'boolean', short: 'f' },
     tabs: { type: 'boolean', short: 't' },
     commas: { type: 'boolean', short: 'c' },
     doubleQuotes: { type: 'boolean', short: 'd' },
-    url: { type: 'string' },
-    keep_attr: { type: 'boolean', short: 'a' },
+    clean: { type: 'boolean', short: 'a' },
     simple: { type: 'boolean', short: 's' }
   },
 }).values
 
-function print(text, exitCode = 0) { // print logs to stdout and exits the process
-  if (exitCode === 1) console.error(text)
-  else console.log(text)
+const exit = (text, exitCode = 0) => { // print logs to stdout and exits the process
+  if (exitCode === 1) console.error(text); else console.log(text)
   process.exit(exitCode)
 }
 
-if (args.help) print(help)
-if (args.version) print(version)
-
-async function convert(options = {}): Promise<string | void> { // convert uses the stdin as input for the html2pug library
-  const stdin = await getStdin()
-  if (!stdin) return print(help)
-  return html2pug(stdin, options)
+{
+  let info = undefined
+  if (args.help) info = help; if (args.version) info = version
+  if (info) exit(info)
 }
-convert(args)
-  .then(result => print(result))
-  .catch(err => print(err, 1))
+
+const stdin = await getStdin(); if (!stdin) exit(help)
+exit(html2pug(stdin, args))

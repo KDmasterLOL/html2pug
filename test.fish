@@ -1,1 +1,1 @@
-curl http://example.com | bun ./src/cli.ts -s
+curl http://example.com | bun ./src/cli.ts
