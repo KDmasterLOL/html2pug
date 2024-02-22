@@ -3,31 +3,16 @@ import { JSDOM } from "jsdom"
 import Pugify from './parser.js'
 import processHTML from "./process_html.js"
 
-const defaultOptions = {
-  // html2pug options
-  fragment: false,
-  tabs: false,
-  commas: true,
-  doubleQuotes: false,
-  inlineCollapse: true,
-  keep_attr: true,
-  clean: true,
-  simple: false,
+export type Options = {
+  fragment: boolean,
+  tabs: boolean,
+  commas: boolean,
+  doubleQuotes: boolean,
+  clean: boolean,
+  simple: boolean,
 }
 
-function clean(DOM: JSDOM) {
-  const body = DOM.window.document.body
-  let target: Document | DocumentFragment
-  let buffer = body.getElementsByTagName('main')
-  if (buffer.length != 0) {
-    target = DOM.window.document.createDocumentFragment()
-    target.append(buffer[0])
-  }
-
-}
-export default (sourceHtml, options = {}) => {
-  const opts = { ...defaultOptions, ...options }
-
+export function html2pug(sourceHtml, options: Options) {
   const html = minify(sourceHtml, {
     caseSensitive: true,
     removeEmptyAttributes: true,
@@ -36,7 +21,7 @@ export default (sourceHtml, options = {}) => {
     preserveLineBreaks: false
   })
 
-  const { fragment, tabs, commas, doubleQuotes, inlineCollapse, keep_attr, clean, simple } = opts
+  const { fragment, tabs, commas, doubleQuotes, clean, simple } = options
 
   const dom = new JSDOM(html)
   const document = dom.window.document
@@ -48,8 +33,6 @@ export default (sourceHtml, options = {}) => {
     indentStyle: tabs ? '\t' : '  ',
     separatorStyle: commas ? ', ' : ' ',
     quoteStyle: doubleQuotes ? '"' : "'",
-    inlineCollapse,
-    removeAttributes: !keep_attr,
     simple
   })
   return pugify.parse()

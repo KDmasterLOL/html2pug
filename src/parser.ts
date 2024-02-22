@@ -19,8 +19,6 @@ type options = {
   indentStyle: '\t' | '  '
   separatorStyle: ', ' | ' '
   quoteStyle: '"' | "'"
-  inlineCollapse: boolean // Using tag interpolation on inline elements or not
-  removeAttributes: boolean
   simple: boolean
 }
 

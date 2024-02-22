@@ -2,7 +2,7 @@
 
 import { parseArgs } from 'node:util'
 import getStdin from 'get-stdin'
-import html2pug from './index.js'
+import { html2pug, Options } from './index.js'
 import packageInfo from '../package.json' assert { type: 'json'}
 const { version } = packageInfo
 // help represents the usage guide
@@ -59,4 +59,4 @@ const exit = (text, exitCode = 0) => { // print logs to stdout and exits the pro
 }
 
 const stdin = await getStdin(); if (!stdin) exit(help)
-exit(html2pug(stdin, args))
+exit(html2pug(stdin, args as Options))
