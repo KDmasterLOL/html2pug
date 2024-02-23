@@ -1,1 +1,1 @@
-curl http://example.com | bun ./src/cli.ts
+curl https://www.samhsa.gov/mental-health | bun ./src/cli.ts --clean

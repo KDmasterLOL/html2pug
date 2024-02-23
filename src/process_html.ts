@@ -1,29 +1,48 @@
 import { JSDOM } from 'jsdom'
 
 function escape(str: string) {
-	const REPLACEMENTS = {
-		'<': '&lt;',
-		'>': '&gt;',
-	}
-	for (const [k, v] of Object.entries(REPLACEMENTS)) str = str.replace(new RegExp(k, 'g'), v)
-	return str
+  const REPLACEMENTS = {
+    '<': '&lt;',
+    '>': '&gt;',
+  }
+  for (const [k, v] of Object.entries(REPLACEMENTS)) str = str.replace(new RegExp(k, 'g'), v)
+  return str
 }
 
 function clear_codes(document: DocumentFragment) {
-	let code_elements: NodeListOf<HTMLElement> = document.querySelectorAll('code')
-	for (let index = 0; index < code_elements.length; index++) {
-		const code_element = code_elements[index]
-		code_element.innerHTML = escape(code_element.textContent)
-	}
+  let codes: NodeListOf<HTMLElement> = document.querySelectorAll('code')
+  for (let index = 0; index < codes.length; index++) {
+    const code_element = codes[index]
+    code_element.innerHTML = escape(code_element.textContent)
+  }
+}
+function clear_attributes(element: Element) {
+  const attributes = Array.from(element.attributes)
+  for (let attr of attributes) {
+    if (
+      (element.tagName == "a" && attr.name == "href")
+      ||
+      (['img', 'embed'].includes(element.tagName) && attr.name == "src")
+    ) continue
+
+    element.removeAttribute(attr.name)
+
+  }
+
 }
 
-export default function (document: Document): DocumentFragment {
-	const result = document.createDocumentFragment()
-	const body = document.body
-	result.appendChild(body.querySelector("main, #main, [role=main]") || body)
-	clear_codes(result)
+export default function(document: Document): DocumentFragment {
+  const result = document.createDocumentFragment()
+  const body = document.body
+  result.appendChild(body.querySelector("main, #main, [role=main]") || body)
+  const elements = result.querySelectorAll('*')
+  for (let index = 0; index < elements.length; index++) {
+    const element = elements[index];
+    clear_attributes(element)
+  }
+  clear_codes(result)
 
-	return result
+  return result
 }
 
 // function remove_attributes(element: HTMLElement) {
