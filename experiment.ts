@@ -1,6 +1,6 @@
 import { JSDOM } from 'jsdom'
 import { minify } from 'html-minifier'
-import html2pug from './src/index.ts'
+import { html2pug } from './src/index.ts'
 
 // const test_html = `<!DOCTYPE html>
 // <html lang="en">
@@ -38,5 +38,12 @@ const test_fragment = `string of text node`
 
 // const test_html = await (await fetch('http://example.com')).text()
 
-const res = html2pug(test_html, { simple: false, clean: false }) // TODO: Fix problems without cleaning
+const res = html2pug(test_html, {
+  simple: false,
+  clean: true,
+  fragment: false,
+  tabs: false,
+  commas: false,
+  doubleQuotes: false
+})
 console.log(res)

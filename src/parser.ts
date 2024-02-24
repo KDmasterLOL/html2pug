@@ -138,8 +138,9 @@ class Parser {
     const element = node as HTMLElement
     let prefix = "\n" + this.getIndent(level), value = this.convert_html_element_open_tag(element)
 
+    // FIXME: Add space if interpolated element is first
     if (flags & Flags.BlockExpansion) prefix = ": "
-    else if (flags & Flags.Interpolate) prefix = "#["
+    else if (flags & Flags.Interpolate) prefix = ((flags & Flags.FirstChild) ? " " : "") + "#["
 
     return { value, prefix }
   }

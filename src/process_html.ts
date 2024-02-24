@@ -1,33 +1,23 @@
 import { JSDOM } from 'jsdom'
 
 function escape(str: string) {
-  const REPLACEMENTS = {
-    '<': '&lt;',
-    '>': '&gt;',
-  }
+  const REPLACEMENTS = { '<': '&lt;', '>': '&gt;' }
   for (const [k, v] of Object.entries(REPLACEMENTS)) str = str.replace(new RegExp(k, 'g'), v)
   return str
 }
-
-function clear_codes(document: DocumentFragment) {
-  let codes: NodeListOf<HTMLElement> = document.querySelectorAll('code')
-  for (let index = 0; index < codes.length; index++) {
-    const code_element = codes[index]
-    code_element.innerHTML = escape(code_element.textContent)
+const clear = {
+  text_content(element: Element) { element.innerHTML = escape(element.textContent) },
+  attributes(element: Element) {
+    const attributes = Array.from(element.attributes)
+    for (let attr of attributes) {
+      if ((element.tagName == "a" && attr.name == "href")
+        ||
+        (['img', 'embed'].includes(element.tagName) && attr.name == "src")) continue
+      element.removeAttribute(attr.name)
+    }
   }
 }
-function clear_attributes(element: Element) {
-  const attributes = Array.from(element.attributes)
-  for (let attr of attributes) {
-    if (
-      (element.tagName == "a" && attr.name == "href")
-      ||
-      (['img', 'embed'].includes(element.tagName) && attr.name == "src")
-    ) continue
 
-    element.removeAttribute(attr.name)
-  }
-}
 function is_empty(node: Node) { return /^\s*$/.test(node.textContent) }
 
 export default function(document: Document): DocumentFragment {
@@ -38,10 +28,12 @@ export default function(document: Document): DocumentFragment {
   for (let index = 0; index < elements.length; index++) {
     const element = elements[index];
     if (is_empty(element)) element.remove()
-    clear_attributes(element)
-  }
-  clear_codes(result)
 
+    clear.attributes(element)
+    switch (element.tagName.toLowerCase()) {
+      case "code": clear.text_content(element); break;
+    }
+  }
   return result
 }
 

@@ -1,1 +1,1 @@
-curl https://www.samhsa.gov/mental-health | bun ./src/cli.ts --clean
+cat ./test.html | bun ./src/cli.ts --clean
