@@ -29,10 +29,41 @@ import { html2pug } from './src/index.ts'
 // sadfasdfa <b> bold </b> sdfasdf  <b> bold last </b>
 // asdasfdasdfsad</pre>`
 // const test_html = `<div class="post"><h1 class="post-title">Build your first Neovim configuration in lua</h1><span class="post-date">2022-07-04 | 21 min read | <a href="https://vonheikemen.github.io/devlog/es/tools/build-your-first-lua-config-for-neovim/"> Leer en español </a> </span><blockquote>Last updated: 2023-09-26</blockquote><p>Neovim is a tool both powerful and extensible. With some effort it can do more than just modify text in a file. Today I hope I can teach you enough about Neovim's <code>lua</code> api to be able to build your own configuration.</p><p>We will create a configuration file called <code>init.lua</code>, add a couple of plugins and I'll tell you how to make your own commands.</p><p>This tutorial is meant for people totally new to Neovim. If you already have a configuration written in vimscript and want to migrate to lua, you might find this other article more useful: <a href="https://vonheikemen.github.io/devlog/tools/configuring-neovim-using-lua/">Everything you need to know to configure neovim using lua</a>.</p><h2 id="some-advice">Some advice</h2><p>Before we start, I suggest you install the latest stable version of Neovim. You can go to the <a href="https://github.com/neovim/neovim/releases" rel="noopener" target="_blank">release page</a> in the github repository and download it from there. From now on I will assume you are using version 0.8 or greater.</p><p>If you don't feel comfortable using Neovim as an editor, follow the tutorial that comes bundled with it. You can start it using this command in the terminal.</p><pre class="language-sh" data-lang="sh" style="background:#2b2c2f;color:#cccece"><code class="language-sh" data-lang="sh"><span style="color:#6699cc">nvim +Tutor</span></code></pre>
-const test_html = `<pre class="language-sh" data-lang="sh" style="background:#2b2c2f;color:#cccece"><code class="language-sh" data-lang="sh"><span style="color:#6699cc">nvim +Tutor</span></code></pre>
-<pre class="language-sh" data-lang="sh" style="background:#2b2c2f;color:#cccece"><code class="language-sh" data-lang="sh"><span style="color:#6699cc">nvim +Tutor
-bsd i am </span></code></pre>`
-
+// const test_html = `<pre class="language-sh" data-lang="sh" style="background:#2b2c2f;color:#cccece"><code class="language-sh" data-lang="sh"><span style="color:#6699cc">nvim +Tutor</span></code></pre>
+// <pre class="language-sh" data-lang="sh" style="background:#2b2c2f;color:#cccece"><code class="language-sh" data-lang="sh"><span style="color:#6699cc">nvim +Tutor
+// bsd i am </span></code></pre>`
+const test_html = `
+                  <code-example header="src/app/item-details-metadata.component.ts"
+                    path="inputs-outputs/src/app/item-details-metadata.component.ts"
+                    region="use-input-metadata-required" ng-version="17.2.0-rc.1">
+                    <div style="display: none;"></div>
+                    <header class="ng-star-inserted">src/app/item-details-metadata.component.ts</header><!----><aio-code
+                      class="headed-code">
+                      <pre class="lang- prettyprint"> <button title="Copy code snippet"
+                          class="material-icons copy-button no-print ng-star-inserted"
+                          aria-label="Copy code snippet from src/app/item-details-metadata.component.ts">
+                          <span aria-hidden="true">content_copy</span>
+                        </button><!---->
+                        <code class="animated fadeIn"><span class="kwd">import</span><span class="pln"> </span><span
+                            class="pun">{</span><span class="pln"> </span><a href="api/core/Component"
+                            class="code-anchor"><span class="typ">Component</span></a><span class="pun">,</span><span
+                            class="pln"> </span><a href="api/core/Input" class="code-anchor"><span
+                              class="typ">Input</span></a><span class="pln"> </span><span class="pun">}</span><span
+                            class="pln"> </span><span class="kwd">from</span><span class="pln"> </span><span
+                            class="str">'@angular/core'</span><span class="pun">;</span><span class="pln"> </span><span
+                            class="com">// First, import </span><a href="api/core/Input" class="code-anchor"><span
+                              class="com">Input</span></a><span class="pln">
+                          </span><span class="lit">@</span><a href="api/core/Input" class="code-anchor"><span
+                              class="lit">Input</span></a><span class="pun">({</span><span
+                            class="pln">required</span><span class="pun">:</span><span class="pln"> </span><span
+                            class="kwd">true</span><span class="pun">})</span><span class="pln"> item</span><span
+                            class="pun">!:</span><span class="pln"> </span><span class="kwd">string</span><span
+                            class="pun">;</span><span class="pln"> </span><span class="com">// Second, decorate the
+                            property with required metadata</span></code>
+                      </pre>
+                    </aio-code>
+                  </code-example>
+`
 const test_fragment = `string of text node`
 
 

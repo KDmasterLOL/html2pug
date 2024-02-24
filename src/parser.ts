@@ -45,10 +45,11 @@ class Parser {
   }
 
   can_interpolate(node: Node, parent_flags: Flags, previous_child: tree_value | undefined): boolean {
-    if (parent_flags & Flags.Interpolate || previous_child?.flags & Flags.Interpolate) return true
+    // FIXME: return false if element has text bloack
+    if (parent_flags & Flags.Interpolate) return true
     switch (node.nodeType) {
       case Node.TEXT_NODE:
-        return previous_child == undefined || previous_child.node.nodeType == Node.TEXT_NODE
+        return previous_child == undefined || previous_child.node.nodeType == Node.TEXT_NODE || (previous_child.flags & Flags.Interpolate) != 0
       case Node.ELEMENT_NODE:
         const element = node as HTMLElement
 
@@ -64,7 +65,7 @@ class Parser {
     return (
       (flags & (Flags.PreWrap | Flags.FirstChild)) == (Flags.PreWrap | Flags.FirstChild)
       &&
-      (node.nodeValue.includes('\n') || (flags & Flags.SingleChild) == 0)) // TODO: Check condition if right
+      (node.nodeValue.includes('\n') || (flags & Flags.SingleChild) == 0))
   }
   can_block_expansion(node: Node) { return node.childNodes.length == 1 && node.childNodes[0].nodeType == Node.ELEMENT_NODE }
 
@@ -76,9 +77,9 @@ class Parser {
     if ((flags & Flags.PreWrap) || (node.nodeName.toLowerCase() == "pre")) new_flags |= Flags.PreWrap
 
     const child_node = node.childNodes[child_index]
+    if (this.can_make_text_block(child_node, new_flags)) new_flags |= Flags.TextBlock
     if (this.can_block_expansion(node)) new_flags |= Flags.BlockExpansion
     else if (this.can_interpolate(child_node, flags, previous_child)) new_flags |= Flags.Interpolate
-    if (this.can_make_text_block(child_node, new_flags)) new_flags |= Flags.TextBlock // TODO: Check condition if right
     return new_flags
   }
 
@@ -138,7 +139,6 @@ class Parser {
     const element = node as HTMLElement
     let prefix = "\n" + this.getIndent(level), value = this.convert_html_element_open_tag(element)
 
-    // FIXME: Add space if interpolated element is first
     if (flags & Flags.BlockExpansion) prefix = ": "
     else if (flags & Flags.Interpolate) prefix = ((flags & Flags.FirstChild) ? " " : "") + "#["
 

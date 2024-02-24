@@ -24,6 +24,7 @@ export default function(document: Document): DocumentFragment {
   const result = document.createDocumentFragment()
   const body = document.body
   result.appendChild(body.querySelector("main, #main, [role=main]") || body)
+
   const elements = result.querySelectorAll('*')
   for (let index = 0; index < elements.length; index++) {
     const element = elements[index];
