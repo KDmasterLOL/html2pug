@@ -26,10 +26,9 @@ function clear_attributes(element: Element) {
     ) continue
 
     element.removeAttribute(attr.name)
-
   }
-
 }
+function is_empty(node: Node) { return /^\s*$/.test(node.textContent) }
 
 export default function(document: Document): DocumentFragment {
   const result = document.createDocumentFragment()
@@ -38,6 +37,7 @@ export default function(document: Document): DocumentFragment {
   const elements = result.querySelectorAll('*')
   for (let index = 0; index < elements.length; index++) {
     const element = elements[index];
+    if (is_empty(element)) element.remove()
     clear_attributes(element)
   }
   clear_codes(result)
