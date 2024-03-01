@@ -5,7 +5,7 @@ import getStdin from 'get-stdin'
 import { html2pug, Options } from './index.js'
 import packageInfo from '../package.json' assert { type: 'json'}
 const { version } = packageInfo
-// help represents the usage guide
+
 const help = `
   html2pug converts HTML to Pug.
 
