@@ -71,7 +71,6 @@ const test_fragment = `string of text node`
 
 const res = html2pug(test_html, {
   simple: false,
-  clean: true,
   fragment: false,
   tabs: false,
   commas: false,

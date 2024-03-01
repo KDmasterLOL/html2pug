@@ -8,7 +8,6 @@ export type Options = {
   tabs: boolean,
   commas: boolean,
   doubleQuotes: boolean,
-  clean: boolean,
   simple: boolean,
 }
 
@@ -21,13 +20,12 @@ export function html2pug(sourceHtml, options: Options) {
     preserveLineBreaks: false
   })
 
-  const { fragment, tabs, commas, doubleQuotes, clean, simple } = options
+  const { fragment, tabs, commas, doubleQuotes, simple } = options
 
   const dom = new JSDOM(html)
   const document = dom.window.document
   let root: Document | DocumentFragment = document
 
-  if (clean) root = processHTML(document)
 
   const pugify = new Pugify(root, {
     indentStyle: tabs ? '\t' : '  ',

@@ -42,7 +42,6 @@ let args = parseArgs({
     tabs: { type: 'boolean', short: 't' },
     commas: { type: 'boolean', short: 'c' },
     doubleQuotes: { type: 'boolean', short: 'd' },
-    clean: { type: 'boolean' },
     simple: { type: 'boolean', short: 's' }
   },
 }).values
