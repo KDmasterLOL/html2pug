@@ -25,17 +25,9 @@ type options = {
 
 class Parser {
   pug: string = ''
-  root: Node
-  options: options
   inline_elements: string = "a, b, i, em , strong, code, span"
 
-
-  constructor(root: Node, options: options) {
-    this.root = root
-    this.options = options
-  }
-
-  getIndent(level = 0): string { return this.options.indentStyle.repeat(level) }
+  constructor(private root: Node, private options: options) { }
 
 
   parse() {
@@ -85,7 +77,9 @@ class Parser {
   }
 
 
-  simple_node_convert(node: Node, level: number = 0) {
+  getIndent(level = 0): string { return this.options.indentStyle.repeat(level) }
+
+  simple_node_convert(node: Node, level: number = 0) { // TODO: Merge simple_node_convert with convert tree
     const add = (str: string) => this.pug += '\n' + this.getIndent(level) + str
     switch (node.nodeType) {
       case Node.TEXT_NODE: add('| ' + node.nodeValue); break
@@ -97,14 +91,16 @@ class Parser {
 
   convert_tree(tree: Node) {
     let result = ""
+
     const can_continue = ({ node, flags, child_index }: tree_value) => {
-      const is_text_node = node.nodeType == Node.TEXT_NODE
-      if (is_text_node || child_index >= node.childNodes.length) { // Text node or is out of children
-        if (!is_text_node && (flags & Flags.Interpolate)) result += "]" // End interpolation
+      if (node.nodeType == Node.TEXT_NODE) return false
+      if (child_index >= node.childNodes.length) { // Is out of children
+        if (flags & Flags.Interpolate) result += "]" // End interpolation
         return false
       }
       return true
     }
+
     let tree_stack: tree_value[] = [{ node: tree, child_index: 0, flags: Flags.None }], previous_child: tree_value | undefined
     while (tree_stack.length > 0) {
       const last_stack_entry = tree_stack[tree_stack.length - 1]
@@ -115,18 +111,13 @@ class Parser {
 
       const child = node.childNodes[child_index], level = tree_stack.length
 
-      let prefix = "", value = "", child_entry = {
+      const child_entry = {
         node: child,
         child_index: 0,
         flags: this.hang_flags(last_stack_entry, previous_child)
       }
+      const { value, prefix } = this.convert_node(child_entry, level)
 
-      switch (child.nodeType) {
-        case Node.TEXT_NODE: ({ prefix, value } = this.convert_text_node(child_entry, level))
-          break
-        case Node.ELEMENT_NODE: ({ prefix, value } = this.convert_element_node(child_entry, level))
-          break
-      }
       tree_stack.push(child_entry)
 
       result += prefix + value
@@ -136,6 +127,13 @@ class Parser {
     return result
   }
 
+  convert_node(child_entry: tree_value, level: number): { value: string, prefix: string } {
+
+    switch (child_entry.node.nodeType) {
+      case Node.TEXT_NODE: return this.convert_text_node(child_entry, level)
+      case Node.ELEMENT_NODE: return this.convert_element_node(child_entry, level)
+    }
+  }
   convert_element_node({ node, flags }: tree_value, level: number): { value: string, prefix: string } {
     const element = node as HTMLElement
     let prefix = "\n" + this.getIndent(level), value = this.convert_html_element_open_tag(element)
