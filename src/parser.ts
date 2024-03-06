@@ -62,10 +62,11 @@ class Parser {
   }
   can_make_text_block(node: Node, flags: Flags): boolean {
     if (node.nodeType != Node.TEXT_NODE) return false
+    const has_element_with_many_lines = Array.from(node.childNodes).some((v) => v.nodeType != Node.TEXT_NODE && v.textContent.includes('\n'))
     return (
-      (flags & (Flags.PreWrap | Flags.FirstChild)) == (Flags.PreWrap | Flags.FirstChild)
-      &&
-      (node.nodeValue.includes('\n') || (flags & Flags.SingleChild) == 0))
+      (flags & (Flags.PreWrap | Flags.FirstChild)) == (Flags.PreWrap | Flags.FirstChild) &&
+      (node.nodeValue.includes('\n') || (flags & Flags.SingleChild) == 0) &&
+      has_element_with_many_lines == false)
   }
   can_block_expansion(node: Node) { return node.childNodes.length == 1 && node.childNodes[0].nodeType == Node.ELEMENT_NODE }
 
@@ -77,7 +78,7 @@ class Parser {
     if ((flags & Flags.PreWrap) || (node.nodeName.toLowerCase() == "pre")) new_flags |= Flags.PreWrap
 
     const child_node = node.childNodes[child_index]
-    if (this.can_make_text_block(child_node, new_flags)) new_flags |= Flags.TextBlock
+    if (this.can_make_text_block(child_node, new_flags)) new_flags |= Flags.TextBlock // FIXME: When text node goes here it become block in undesired places
     if (this.can_block_expansion(node)) new_flags |= Flags.BlockExpansion
     else if (this.can_interpolate(child_node, flags, previous_child)) new_flags |= Flags.Interpolate
     return new_flags
@@ -141,6 +142,15 @@ class Parser {
 
     if (flags & Flags.BlockExpansion) prefix = ": "
     else if (flags & Flags.Interpolate) prefix = ((flags & Flags.FirstChild) ? " " : "") + "#["
+    // FIX: Wrong output when in pre element first element text element with new line and second code:
+    //  code-example
+    //        header src/app/app.component.html
+    //        aio-code: pre.
+    //
+    //            |
+    //                                        #[code.
+    //              <app-item-detail
+    //                                              [item]="currentItem"></app-item-detail>]
 
     return { value, prefix }
   }

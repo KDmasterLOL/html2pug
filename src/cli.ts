@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/opt/homebrew/bin/bun
 
 import { parseArgs } from 'node:util'
 import getStdin from 'get-stdin'

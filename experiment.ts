@@ -32,38 +32,45 @@ import { html2pug } from './src/index.ts'
 // const test_html = `<pre class="language-sh" data-lang="sh" style="background:#2b2c2f;color:#cccece"><code class="language-sh" data-lang="sh"><span style="color:#6699cc">nvim +Tutor</span></code></pre>
 // <pre class="language-sh" data-lang="sh" style="background:#2b2c2f;color:#cccece"><code class="language-sh" data-lang="sh"><span style="color:#6699cc">nvim +Tutor
 // bsd i am </span></code></pre>`
-const test_html = `
-                  <code-example header="src/app/item-details-metadata.component.ts"
-                    path="inputs-outputs/src/app/item-details-metadata.component.ts"
-                    region="use-input-metadata-required" ng-version="17.2.0-rc.1">
-                    <div style="display: none;"></div>
-                    <header class="ng-star-inserted">src/app/item-details-metadata.component.ts</header><!----><aio-code
-                      class="headed-code">
-                      <pre class="lang- prettyprint"> <button title="Copy code snippet"
-                          class="material-icons copy-button no-print ng-star-inserted"
-                          aria-label="Copy code snippet from src/app/item-details-metadata.component.ts">
-                          <span aria-hidden="true">content_copy</span>
-                        </button><!---->
-                        <code class="animated fadeIn"><span class="kwd">import</span><span class="pln"> </span><span
-                            class="pun">{</span><span class="pln"> </span><a href="api/core/Component"
-                            class="code-anchor"><span class="typ">Component</span></a><span class="pun">,</span><span
-                            class="pln"> </span><a href="api/core/Input" class="code-anchor"><span
-                              class="typ">Input</span></a><span class="pln"> </span><span class="pun">}</span><span
-                            class="pln"> </span><span class="kwd">from</span><span class="pln"> </span><span
-                            class="str">'@angular/core'</span><span class="pun">;</span><span class="pln"> </span><span
-                            class="com">// First, import </span><a href="api/core/Input" class="code-anchor"><span
-                              class="com">Input</span></a><span class="pln">
-                          </span><span class="lit">@</span><a href="api/core/Input" class="code-anchor"><span
-                              class="lit">Input</span></a><span class="pun">({</span><span
-                            class="pln">required</span><span class="pun">:</span><span class="pln"> </span><span
-                            class="kwd">true</span><span class="pun">})</span><span class="pln"> item</span><span
-                            class="pun">!:</span><span class="pln"> </span><span class="kwd">string</span><span
-                            class="pun">;</span><span class="pln"> </span><span class="com">// Second, decorate the
-                            property with required metadata</span></code>
-                      </pre>
-                    </aio-code>
-                  </code-example>
-`
+// const test_html = `
+//                   <code-example header="src/app/item-details-metadata.component.ts"
+//                     path="inputs-outputs/src/app/item-details-metadata.component.ts"
+//                     region="use-input-metadata-required" ng-version="17.2.0-rc.1">
+//                     <div style="display: none;"></div>
+//                     <header class="ng-star-inserted">src/app/item-details-metadata.component.ts</header><!----><aio-code
+//                       class="headed-code">
+//                       <pre class="lang- prettyprint"> <button title="Copy code snippet"
+//                           class="material-icons copy-button no-print ng-star-inserted"
+//                           aria-label="Copy code snippet from src/app/item-details-metadata.component.ts">
+//                           <span aria-hidden="true">content_copy</span>
+//                         </button><!---->
+//                         <code class="animated fadeIn"><span class="kwd">import</span><span class="pln"> </span><span
+//                             class="pun">{</span><span class="pln"> </span><a href="api/core/Component"
+//                             class="code-anchor"><span class="typ">Component</span></a><span class="pun">,</span><span
+//                             class="pln"> </span><a href="api/core/Input" class="code-anchor"><span
+//                               class="typ">Input</span></a><span class="pln"> </span><span class="pun">}</span><span
+//                             class="pln"> </span><span class="kwd">from</span><span class="pln"> </span><span
+//                             class="str">'@angular/core'</span><span class="pun">;</span><span class="pln"> </span><span
+//                             class="com">// First, import </span><a href="api/core/Input" class="code-anchor"><span
+//                               class="com">Input</span></a><span class="pln">
+//                           </span><span class="lit">@</span><a href="api/core/Input" class="code-anchor"><span
+//                               class="lit">Input</span></a><span class="pun">({</span><span
+//                             class="pln">required</span><span class="pun">:</span><span class="pln"> </span><span
+//                             class="kwd">true</span><span class="pun">})</span><span class="pln"> item</span><span
+//                             class="pun">!:</span><span class="pln"> </span><span class="kwd">string</span><span
+//                             class="pun">;</span><span class="pln"> </span><span class="com">// Second, decorate the
+//                             property with required metadata</span></code>
+//                       </pre>
+//                     </aio-code>
+//                   </code-example>
+// `
+const test_html =`<pre>
+
+<code>adfasdf
+asdfasdf
+asdf
+</code>
+</pre>`
 const test_fragment = `string of text node`
 
 

@@ -1,7 +1,6 @@
 import { minify } from 'html-minifier'
 import { JSDOM } from "jsdom"
 import Pugify from './parser.js'
-import processHTML from "./process_html.js"
 
 export type Options = {
   fragment: boolean,
