@@ -1,4 +1,3 @@
-import { assert } from "console"
 import { JSDOM } from "jsdom"
 
 const Node = new JSDOM().window.Node
@@ -9,9 +8,13 @@ enum Flags {
   Interpolate = 1 << 1,
   SingleChild = 1 << 2,
   FirstChild = 1 << 3,
-  TextBlock = 1 << 4,
-  BlockExpansion = 1 << 5,
+  ParentTextBlock = 1 << 4,
+  TextBlock = 1 << 5,
+  BlockExpansion = 1 << 6,
+  HasNewLines = 1 << 7,
 }
+function has_flag(source: Flags, target: Flags): boolean { return (source & target) == target }
+function has_any_flag(source: Flags, target: Flags) { return (source & target) != 0 }
 
 type tree_value = { node: Node, child_index: number, flags: Flags }
 
@@ -37,7 +40,6 @@ class Parser {
   }
 
   can_interpolate(node: Node, parent_flags: Flags, previous_child: tree_value | undefined): boolean {
-    // FIXME: return false if element has text bloack
     if (parent_flags & Flags.Interpolate) return true
     switch (node.nodeType) {
       case Node.TEXT_NODE:
@@ -55,24 +57,38 @@ class Parser {
   can_make_text_block(node: Node, flags: Flags): boolean {
     if (node.nodeType != Node.TEXT_NODE) return false
     const has_element_with_many_lines = Array.from(node.childNodes).some((v) => v.nodeType != Node.TEXT_NODE && v.textContent.includes('\n'))
-    return (
-      (flags & (Flags.PreWrap | Flags.FirstChild)) == (Flags.PreWrap | Flags.FirstChild) &&
-      (node.nodeValue.includes('\n') || (flags & Flags.SingleChild) == 0) &&
-      has_element_with_many_lines == false)
+    return has_flag(flags, Flags.PreWrap | Flags.FirstChild) &&
+      (node.nodeValue.includes('\n') || has_flag(flags, Flags.SingleChild) == false) &&
+      has_element_with_many_lines == false
+  }
+  can_make_parent_text_block(element: HTMLElement, flags: Flags): boolean {
+    if (has_flag(flags, Flags.PreWrap) == false) return false
+    for (const child of element.children)
+      if (child.textContent.includes('\n') || child.matches(this.inline_elements) == false) return false
+
+    return true
   }
   can_block_expansion(node: Node) { return node.childNodes.length == 1 && node.childNodes[0].nodeType == Node.ELEMENT_NODE }
 
-  hang_flags({ node, flags, child_index }: tree_value, previous_child: tree_value): Flags { // Get parent node and previous child of node
+  hang_flags({ node: parent_node, flags: parent_flags, child_index }: tree_value, previous_child: tree_value): Flags { // Get parent node and previous child of node
     let new_flags = Flags.None
 
     if (child_index == 0) new_flags |= Flags.FirstChild
-    if (node.childNodes.length == 1) new_flags |= Flags.SingleChild
-    if ((flags & Flags.PreWrap) || (node.nodeName.toLowerCase() == "pre")) new_flags |= Flags.PreWrap
+    if (parent_node.childNodes.length == 1) new_flags |= Flags.SingleChild
+    if ((parent_flags & Flags.PreWrap) || (parent_node.nodeName.toLowerCase() == "pre")) new_flags |= Flags.PreWrap
+    if (has_any_flag(parent_flags, Flags.ParentTextBlock | Flags.TextBlock)) new_flags |= Flags.TextBlock
 
-    const child_node = node.childNodes[child_index]
-    if (this.can_make_text_block(child_node, new_flags)) new_flags |= Flags.TextBlock // FIXME: When text node goes here it become block in undesired places
-    if (this.can_block_expansion(node)) new_flags |= Flags.BlockExpansion
-    else if (this.can_interpolate(child_node, flags, previous_child)) new_flags |= Flags.Interpolate
+    const child_node = parent_node.childNodes[child_index]
+    if (child_node.textContent.includes('\n')) new_flags |= Flags.HasNewLines
+
+    if (child_node.nodeType == Node.ELEMENT_NODE) {
+      const element = child_node as HTMLElement
+      if (this.can_make_parent_text_block(element, new_flags)) new_flags |= Flags.ParentTextBlock
+      if (this.can_block_expansion(parent_node)) new_flags |= Flags.BlockExpansion
+    }
+
+    if (has_any_flag(new_flags, Flags.BlockExpansion | Flags.TextBlock | Flags.HasNewLines) == false &&
+      this.can_interpolate(child_node, parent_flags, previous_child)) new_flags |= Flags.Interpolate
     return new_flags
   }
 
@@ -106,8 +122,9 @@ class Parser {
       const last_stack_entry = tree_stack[tree_stack.length - 1]
       const { node, child_index } = last_stack_entry
 
-      if (child_index == 0) previous_child = undefined
       if (can_continue(last_stack_entry) == false) { previous_child = tree_stack.pop(); continue }
+
+      if (child_index == 0) previous_child = undefined
 
       const child = node.childNodes[child_index], level = tree_stack.length
 
@@ -128,7 +145,6 @@ class Parser {
   }
 
   convert_node(child_entry: tree_value, level: number): { value: string, prefix: string } {
-
     switch (child_entry.node.nodeType) {
       case Node.TEXT_NODE: return this.convert_text_node(child_entry, level)
       case Node.ELEMENT_NODE: return this.convert_element_node(child_entry, level)
@@ -140,28 +156,23 @@ class Parser {
 
     if (flags & Flags.BlockExpansion) prefix = ": "
     else if (flags & Flags.Interpolate) prefix = ((flags & Flags.FirstChild) ? " " : "") + "#["
-    // FIX: Wrong output when in pre element first element text element with new line and second code:
-    //  code-example
-    //        header src/app/app.component.html
-    //        aio-code: pre.
-    //
-    //            |
-    //                                        #[code.
-    //              <app-item-detail
-    //                                              [item]="currentItem"></app-item-detail>]
+
+    if (flags & Flags.ParentTextBlock) value += '.\n' + this.getIndent(level + 1)
 
     return { value, prefix }
   }
 
-  convert_text_node({ node, flags }: tree_value, level): { value: string, prefix: string } {
+  convert_text_node({ node, flags }: tree_value, level: number): { value: string, prefix: string } {
     let prefix = '\n' + this.getIndent(level) + '| '
-    if (flags & Flags.TextBlock) prefix = '.\n' + this.getIndent(level) // TODO: Make for case when text is not first element
-    else if (flags & Flags.Interpolate) prefix = flags & Flags.FirstChild ? ' ' : ''
+
+    if (flags & Flags.Interpolate) prefix = flags & Flags.FirstChild ? ' ' : ''
 
     let value = node.nodeValue
-    if (flags & Flags.PreWrap) value = value.replaceAll('\n', '\n' + this.getIndent(level)) // TODO: Make for case when text is not first element: When text not first in text block then level will be `level + 1`
+    if (has_flag(flags, Flags.TextBlock)) { prefix = ""; value = value.replaceAll('\n', '\n' + this.getIndent(level)) }
+    else if (has_flag(flags, Flags.PreWrap)) value = value.replaceAll('\n', '\n' + this.getIndent(level) + '| ') // TODO: Make for case when text is not first element: When text not first in text block then level will be `level + 1`
     return { value, prefix }
   }
+
   convert_attributes(attributes: NamedNodeMap): string {
     let result = ""
 

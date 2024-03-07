@@ -64,13 +64,10 @@ import { html2pug } from './src/index.ts'
 //                     </aio-code>
 //                   </code-example>
 // `
-const test_html =`<pre>
-
-<code>adfasdf
+const test_html = `<pre><code>adfasdf
 asdfasdf
 asdf
-</code>
-</pre>`
+</code></pre>`
 const test_fragment = `string of text node`
 
 
