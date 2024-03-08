@@ -66,7 +66,7 @@ import { html2pug } from './src/index.ts'
 // `
 const test_html = `<pre><code>adfasdf
 asdfasdf
-asdf
+asdf <span>afdsfasdf</span> asdf
 </code></pre>`
 const test_fragment = `string of text node`
 

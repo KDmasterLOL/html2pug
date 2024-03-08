@@ -62,7 +62,7 @@ class Parser {
       has_element_with_many_lines == false
   }
   can_make_parent_text_block(element: HTMLElement, flags: Flags): boolean {
-    if (has_flag(flags, Flags.PreWrap) == false) return false
+    if (has_flag(flags, Flags.PreWrap) == false || has_flag(flags, Flags.TextBlock)) return false
     for (const child of element.children)
       if (child.textContent.includes('\n') || child.matches(this.inline_elements) == false) return false
 
@@ -87,7 +87,7 @@ class Parser {
       if (this.can_block_expansion(parent_node)) new_flags |= Flags.BlockExpansion
     }
 
-    if (has_any_flag(new_flags, Flags.BlockExpansion | Flags.TextBlock | Flags.HasNewLines) == false &&
+    if (has_any_flag(new_flags, Flags.BlockExpansion | Flags.ParentTextBlock | Flags.HasNewLines) == false &&
       this.can_interpolate(child_node, parent_flags, previous_child)) new_flags |= Flags.Interpolate
     return new_flags
   }
@@ -116,24 +116,21 @@ class Parser {
       }
       return true
     }
-
-    let tree_stack: tree_value[] = [{ node: tree, child_index: 0, flags: Flags.None }], previous_child: tree_value | undefined
+    const create_entry = (node: Node, flags = Flags.None): tree_value => ({ node, child_index: 0, flags })
+    let tree_stack: tree_value[] = [create_entry(tree)],
+      previous_child: tree_value | undefined = undefined
     while (tree_stack.length > 0) {
       const last_stack_entry = tree_stack[tree_stack.length - 1]
-      const { node, child_index } = last_stack_entry
 
       if (can_continue(last_stack_entry) == false) { previous_child = tree_stack.pop(); continue }
 
-      if (child_index == 0) previous_child = undefined
+      if (last_stack_entry.child_index == 0) previous_child = undefined
 
-      const child = node.childNodes[child_index], level = tree_stack.length
+      const child = last_stack_entry.node.childNodes[last_stack_entry.child_index],
+        level = tree_stack.length
 
-      const child_entry = {
-        node: child,
-        child_index: 0,
-        flags: this.hang_flags(last_stack_entry, previous_child)
-      }
-      const { value, prefix } = this.convert_node(child_entry, level)
+      const child_entry = create_entry(child, this.hang_flags(last_stack_entry, previous_child))
+      const { value, prefix } = this.convert_node(child_entry, last_stack_entry, level)
 
       tree_stack.push(child_entry)
 
@@ -144,9 +141,9 @@ class Parser {
     return result
   }
 
-  convert_node(child_entry: tree_value, level: number): { value: string, prefix: string } {
+  convert_node(child_entry: tree_value, parent_entry: tree_value, level: number): { value: string, prefix: string } {
     switch (child_entry.node.nodeType) {
-      case Node.TEXT_NODE: return this.convert_text_node(child_entry, level)
+      case Node.TEXT_NODE: return this.convert_text_node(child_entry, parent_entry, level)
       case Node.ELEMENT_NODE: return this.convert_element_node(child_entry, level)
     }
   }
@@ -154,21 +151,23 @@ class Parser {
     const element = node as HTMLElement
     let prefix = "\n" + this.getIndent(level), value = this.convert_html_element_open_tag(element)
 
-    if (flags & Flags.BlockExpansion) prefix = ": "
-    else if (flags & Flags.Interpolate) prefix = ((flags & Flags.FirstChild) ? " " : "") + "#["
+    if (has_flag(flags, Flags.BlockExpansion)) prefix = ": "
+    else if (has_flag(flags, Flags.Interpolate)) prefix = (has_flag(flags, Flags.FirstChild) ? " " : "") + "#["
 
-    if (flags & Flags.ParentTextBlock) value += '.\n' + this.getIndent(level + 1)
+    if (has_flag(flags, Flags.ParentTextBlock)) value += '.\n' + this.getIndent(level + 1)
 
     return { value, prefix }
   }
 
-  convert_text_node({ node, flags }: tree_value, level: number): { value: string, prefix: string } {
+  convert_text_node({ node, flags }: tree_value, parent_entry: tree_value, level: number): { value: string, prefix: string } {
     let prefix = '\n' + this.getIndent(level) + '| '
 
     if (flags & Flags.Interpolate) prefix = flags & Flags.FirstChild ? ' ' : ''
 
     let value = node.nodeValue
-    if (has_flag(flags, Flags.TextBlock)) { prefix = ""; value = value.replaceAll('\n', '\n' + this.getIndent(level)) }
+    if (has_flag(flags, Flags.TextBlock)) {
+      prefix = (has_flag(parent_entry.flags, Flags.ParentTextBlock) == false && has_flag(flags, Flags.FirstChild)) ? ' ' : ''; value = value.replaceAll('\n', '\n' + this.getIndent(level))
+    }
     else if (has_flag(flags, Flags.PreWrap)) value = value.replaceAll('\n', '\n' + this.getIndent(level) + '| ') // TODO: Make for case when text is not first element: When text not first in text block then level will be `level + 1`
     return { value, prefix }
   }
