@@ -1,5 +1,3 @@
-import { JSDOM } from 'jsdom'
-import { minify } from 'html-minifier'
 import { html2pug } from './src/index.ts'
 
 // const test_html = `<!DOCTYPE html>

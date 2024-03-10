@@ -26,7 +26,7 @@ type options = {
 }
 
 
-class Parser {
+class PugSerializer {
   pug: string = ''
   inline_elements: string = "a, b, i, em , strong, code, span"
 
@@ -39,7 +39,7 @@ class Parser {
     return this.pug.substring(1)
   }
 
-  can_interpolate(node: Node, parent_flags: Flags, previous_child: tree_value | undefined): boolean {
+  private can_interpolate(node: Node, parent_flags: Flags, previous_child: tree_value | undefined): boolean {
     if (parent_flags & Flags.Interpolate) return true
     switch (node.nodeType) {
       case Node.TEXT_NODE:
@@ -54,23 +54,23 @@ class Parser {
     return false
 
   }
-  can_make_text_block(node: Node, flags: Flags): boolean {
+  private can_make_text_block(node: Node, flags: Flags): boolean {
     if (node.nodeType != Node.TEXT_NODE) return false
     const has_element_with_many_lines = Array.from(node.childNodes).some((v) => v.nodeType != Node.TEXT_NODE && v.textContent.includes('\n'))
     return has_flag(flags, Flags.PreWrap | Flags.FirstChild) &&
       (node.nodeValue.includes('\n') || has_flag(flags, Flags.SingleChild) == false) &&
       has_element_with_many_lines == false
   }
-  can_make_parent_text_block(element: HTMLElement, flags: Flags): boolean {
+  private can_make_parent_text_block(element: HTMLElement, flags: Flags): boolean {
     if (has_flag(flags, Flags.PreWrap) == false || has_flag(flags, Flags.TextBlock)) return false
     for (const child of element.children)
       if (child.textContent.includes('\n') || child.matches(this.inline_elements) == false) return false
 
     return true
   }
-  can_block_expansion(node: Node) { return node.childNodes.length == 1 && node.childNodes[0].nodeType == Node.ELEMENT_NODE }
+  private can_block_expansion(node: Node) { return node.childNodes.length == 1 && node.childNodes[0].nodeType == Node.ELEMENT_NODE }
 
-  hang_flags({ node: parent_node, flags: parent_flags, child_index }: tree_value, previous_child: tree_value): Flags { // Get parent node and previous child of node
+  private hang_flags({ node: parent_node, flags: parent_flags, child_index }: tree_value, previous_child: tree_value): Flags { // Get parent node and previous child of node
     let new_flags = Flags.None
 
     if (child_index == 0) new_flags |= Flags.FirstChild
@@ -93,7 +93,7 @@ class Parser {
   }
 
 
-  getIndent(level = 0): string { return this.options.indentStyle.repeat(level) }
+  private getIndent(level = 0): string { return this.options.indentStyle.repeat(level) }
 
   simple_node_convert(node: Node, level: number = 0) { // TODO: Merge simple_node_convert with convert tree
     const add = (str: string) => this.pug += '\n' + this.getIndent(level) + str
@@ -145,34 +145,56 @@ class Parser {
     switch (child_entry.node.nodeType) {
       case Node.TEXT_NODE: return this.convert_text_node(child_entry, parent_entry, level)
       case Node.ELEMENT_NODE: return this.convert_element_node(child_entry, level)
+      // case Node.COMMENT_NODE: return this.convert
+      default: throw new Error("Unimplemented for node of type " + child_entry.node.nodeType)
     }
   }
-  convert_element_node({ node, flags }: tree_value, level: number): { value: string, prefix: string } {
+  private convert_comment_node(
+    { node, flags }: tree_value,
+    level: number
+  ): { value: string, prefix: string } {
+    return { value: node.nodeValue, prefix: "" }
+  }
+  convert_element_node(
+    { node, flags }: tree_value,
+    level: number
+  ): { value: string, prefix: string } {
     const element = node as HTMLElement
-    let prefix = "\n" + this.getIndent(level), value = this.convert_html_element_open_tag(element)
+    let prefix = "\n" + this.getIndent(level),
+      value = this.convert_html_element_open_tag(element)
 
     if (has_flag(flags, Flags.BlockExpansion)) prefix = ": "
-    else if (has_flag(flags, Flags.Interpolate)) prefix = (has_flag(flags, Flags.FirstChild) ? " " : "") + "#["
+    else if (has_flag(flags, Flags.Interpolate))
+      prefix = (has_flag(flags, Flags.FirstChild) ? " " : "") + "#["
 
     if (has_flag(flags, Flags.ParentTextBlock)) value += '.\n' + this.getIndent(level + 1)
 
     return { value, prefix }
   }
 
-  convert_text_node({ node, flags }: tree_value, parent_entry: tree_value, level: number): { value: string, prefix: string } {
+  private convert_text_node(
+    { node, flags }: tree_value,
+    parent_entry: tree_value,
+    level: number
+  ): { value: string, prefix: string } {
     let prefix = '\n' + this.getIndent(level) + '| '
 
-    if (flags & Flags.Interpolate) prefix = flags & Flags.FirstChild ? ' ' : ''
+    if (has_any_flag(flags, Flags.Interpolate | Flags.TextBlock))
+      prefix =
+        (has_flag(parent_entry.flags, Flags.ParentTextBlock) == false
+          &&
+          has_flag(flags, Flags.FirstChild))
+          ? ' ' : ''
 
     let value = node.nodeValue
     if (has_flag(flags, Flags.TextBlock)) {
-      prefix = (has_flag(parent_entry.flags, Flags.ParentTextBlock) == false && has_flag(flags, Flags.FirstChild)) ? ' ' : ''; value = value.replaceAll('\n', '\n' + this.getIndent(level))
+      value = value.replaceAll('\n', '\n' + this.getIndent(level))
     }
-    else if (has_flag(flags, Flags.PreWrap)) value = value.replaceAll('\n', '\n' + this.getIndent(level) + '| ') // TODO: Make for case when text is not first element: When text not first in text block then level will be `level + 1`
+    else if (has_flag(flags, Flags.PreWrap)) value = value.replaceAll('\n', '\n' + this.getIndent(level) + '| ')
     return { value, prefix }
   }
 
-  convert_attributes(attributes: NamedNodeMap): string {
+  private convert_attributes(attributes: NamedNodeMap): string {
     let result = ""
 
     // Add CSS selectors to pug node and append any element attributes to it
@@ -192,7 +214,7 @@ class Parser {
       return result
     }
   }
-  convert_html_element_open_tag(element: Element): string {
+  private convert_html_element_open_tag(element: Element): string {
     const { tagName, attributes } = element
     let open_tag = tagName.toLowerCase()
     {
@@ -205,53 +227,6 @@ class Parser {
 
     return open_tag
   }
-
-  /**
-   * formatPugNode applies the correct indent for the current line,
-   * and formats the value as either as a single or multiline string.
-   *
-   * @param {String} node - The pug node (e.g. header(class='foo'))
-   * @param {String} value - The node's value
-   * @param {Number} level - Current tree level to generate indent
-   * @param {String} blockChar - The character used to denote a multiline value
-   */
-  formatPugNode(node: string, value: string = '', level: number, blockChar = '.') {
-    const indent = this.getIndent(level)
-    const result = `${indent}${node}`
-
-    const lines = value.split('\n')
-
-    // Create an inline node
-    if (lines.length <= 1) {
-      return value.length ? `${result} ${value}` : result
-    }
-
-    // Create a multiline node
-    const indentChild = this.getIndent(level + 1)
-    const multiline = lines.map(line => `${indentChild}${line}`).join('\n')
-
-    return `${result}${blockChar}\n${multiline}`
-  }
-
-  createDoctype(node, level) {
-    throw new Error("Not impelemented") // TODO: Implement doctype conversion
-    const indent = this.getIndent(level)
-    return `${indent}doctype html`
-  }
-
-  createComment(node, level) {
-    throw new Error("Not impelemented") // TODO: Implement commentary conversion
-  }
-
-
-  /**
-   * createElement formats a generic HTML element.
-   */
-  createElement(node: Element, level: number) {
-    const pugNode = this.convert_html_element_open_tag(node)
-    throw new Error("Not impelemented") // TODO: Implement element conversion
-
-  }
 }
 
-export default Parser
+export default PugSerializer
