@@ -1,5 +1,6 @@
 import { JSDOM } from "jsdom"
 
+
 const Node = new JSDOM().window.Node
 
 enum Flags {
@@ -12,6 +13,9 @@ enum Flags {
   TextBlock = 1 << 5,
   BlockExpansion = 1 << 6,
   HasNewLines = 1 << 7,
+}
+interface FlagHanger {
+  hang_flags(entry: tree_value, previous_child: tree_value): Flags
 }
 function has_flag(source: Flags, target: Flags): boolean { return (source & target) == target }
 function has_any_flag(source: Flags, target: Flags) { return (source & target) != 0 }
@@ -140,6 +144,10 @@ class PugSerializer {
     }
     return result
   }
+
+}
+
+class ComplexFlagHanger implements FlagHanger {
 
 }
 
