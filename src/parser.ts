@@ -29,14 +29,15 @@ type options = {
 class PugSerializer {
   pug: string = ''
   inline_elements: string = "a, b, i, em , strong, code, span"
+  converter: Converter
 
-  constructor(private root: Node, private options: options) { }
+  constructor(private root: Node, options: options) {
+    this.converter = new Converter(options)
+  }
 
 
   parse() {
-    if (this.options.simple) this.simple_node_convert(this.root)
-    else this.pug = this.convert_tree(this.root)
-    return this.pug.substring(1)
+    this.serialize(this.root).substring(1)
   }
 
   private can_interpolate(node: Node, parent_flags: Flags, previous_child: tree_value | undefined): boolean {
@@ -93,19 +94,18 @@ class PugSerializer {
   }
 
 
-  private getIndent(level = 0): string { return this.options.indentStyle.repeat(level) }
 
-  simple_node_convert(node: Node, level: number = 0) { // TODO: Merge simple_node_convert with convert tree
-    const add = (str: string) => this.pug += '\n' + this.getIndent(level) + str
-    switch (node.nodeType) {
-      case Node.TEXT_NODE: add('| ' + node.nodeValue); break
-      case Node.DOCUMENT_FRAGMENT_NODE: node.childNodes.forEach(n => this.simple_node_convert(n, level)); break
-      case Node.ELEMENT_NODE: add(node.nodeName.toLowerCase())
-      default: node.childNodes.forEach(n => this.simple_node_convert(n, level + 1))
-    }
-  }
+  // simple_node_convert(node: Node, level: number = 0) { // TODO: Merge simple_node_convert with convert tree
+  //   const add = (str: string) => this.pug += '\n' + this.getIndent(level) + str
+  //   switch (node.nodeType) {
+  //     case Node.TEXT_NODE: add('| ' + node.nodeValue); break
+  //     case Node.DOCUMENT_FRAGMENT_NODE: node.childNodes.forEach(n => this.simple_node_convert(n, level)); break
+  //     case Node.ELEMENT_NODE: add(node.nodeName.toLowerCase())
+  //     default: node.childNodes.forEach(n => this.simple_node_convert(n, level + 1))
+  //   }
+  // }
 
-  convert_tree(tree: Node) {
+  serialize(tree: Node) {
     let result = ""
 
     const can_continue = ({ node, flags, child_index }: tree_value) => {
@@ -130,7 +130,7 @@ class PugSerializer {
         level = tree_stack.length
 
       const child_entry = create_entry(child, this.hang_flags(last_stack_entry, previous_child))
-      const { value, prefix } = this.convert_node(child_entry, last_stack_entry, level)
+      const { value, prefix } = this.converter.convert_node(child_entry, last_stack_entry, level)
 
       tree_stack.push(child_entry)
 
@@ -140,6 +140,13 @@ class PugSerializer {
     }
     return result
   }
+
+}
+
+class Converter {
+
+  constructor(private options: options) { }
+  private getIndent(level = 0): string { return this.options.indentStyle.repeat(level) }
 
   convert_node(child_entry: tree_value, parent_entry: tree_value, level: number): { value: string, prefix: string } {
     switch (child_entry.node.nodeType) {
