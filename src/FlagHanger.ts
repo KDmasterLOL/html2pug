@@ -2,10 +2,13 @@ import { tree_value, Node } from "./parser.js"
 
 enum Flags {
   None = 0,
+  // Atomic flags
   PreWrap = 1 << 0,
   Interpolate = 1 << 1,
   SingleChild = 1 << 2,
   FirstChild = 1 << 3,
+
+  // HTMLELement flags
   ParentTextBlock = 1 << 4,
   TextBlock = 1 << 5,
   BlockExpansion = 1 << 6,
@@ -14,11 +17,22 @@ enum Flags {
 
 interface FlagHanger { hang_flags(entry: tree_value, previous_child: tree_value): Flags }
 
+class AtomicFlagHanger implements FlagHanger {
+  hang_flags({ node: parent_node, flags: parent_flags, child_index }: tree_value, previous_child: tree_value): Flags {
+    let new_flags = Flags.None
+    if (child_index == 0) new_flags |= Flags.FirstChild
+    if (parent_node.childNodes.length == 1) new_flags |= Flags.SingleChild
+    if ((parent_flags & Flags.PreWrap) || (parent_node.nodeName.toLowerCase() == "pre")) new_flags |= Flags.PreWrap
+    return new_flags
+  }
+
+}
+
 function has_flag(source: Flags, target: Flags): boolean { return (source & target) == target }
 function has_any_flag(source: Flags, target: Flags) { return (source & target) != 0 }
 
-class ComplexFlagHanger implements FlagHanger {
-  constructor(private inline_elements: string) { }
+class ComplexFlagHanger extends AtomicFlagHanger {
+  constructor(private inline_elements: string) { super() }
   can_interpolate(node: Node, parent_flags: Flags, previous_child: tree_value | undefined): boolean {
     if (parent_flags & Flags.Interpolate) return true
     switch (node.nodeType) {
@@ -50,12 +64,10 @@ class ComplexFlagHanger implements FlagHanger {
   }
   can_block_expansion(node: Node) { return node.childNodes.length == 1 && node.childNodes[0].nodeType == Node.ELEMENT_NODE }
 
-  hang_flags({ node: parent_node, flags: parent_flags, child_index }: tree_value, previous_child: tree_value): Flags { // Get parent node and previous child of node
-    let new_flags = Flags.None
+  hang_flags(entry: tree_value, previous_child: tree_value): Flags { // Get parent node and previous child of node
+    const { node: parent_node, flags: parent_flags, child_index } = entry
+    let new_flags = super.hang_flags(entry, previous_child)
 
-    if (child_index == 0) new_flags |= Flags.FirstChild
-    if (parent_node.childNodes.length == 1) new_flags |= Flags.SingleChild
-    if ((parent_flags & Flags.PreWrap) || (parent_node.nodeName.toLowerCase() == "pre")) new_flags |= Flags.PreWrap
     if (has_any_flag(parent_flags, Flags.ParentTextBlock | Flags.TextBlock)) new_flags |= Flags.TextBlock
 
     const child_node = parent_node.childNodes[child_index]
@@ -72,11 +84,5 @@ class ComplexFlagHanger implements FlagHanger {
     return new_flags
   }
 }
-class SimpleFlagHanger implements FlagHanger {
-  hang_flags(entry: tree_value, previous_child: tree_value): Flags {
-    return Flags.None
-  }
 
-}
-
-export { Flags, ComplexFlagHanger, SimpleFlagHanger, FlagHanger, has_flag, has_any_flag }
+export { Flags, ComplexFlagHanger, AtomicFlagHanger as SimpleFlagHanger, FlagHanger, has_flag, has_any_flag }
