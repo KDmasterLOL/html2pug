@@ -72,7 +72,7 @@ const test_fragment = `string of text node`
 // const test_html = await (await fetch('http://example.com')).text()
 
 const res = html2pug(test_html, {
-  simple: false,
+  simple: true,
   fragment: false,
   tabs: false,
   commas: false,

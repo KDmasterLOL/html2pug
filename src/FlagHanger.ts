@@ -1,6 +1,5 @@
 import { tree_value, Node } from "./parser.js"
 
-
 enum Flags {
   None = 0,
   PreWrap = 1 << 0,
@@ -12,9 +11,9 @@ enum Flags {
   BlockExpansion = 1 << 6,
   HasNewLines = 1 << 7,
 }
-interface FlagHanger {
-  hang_flags(entry: tree_value, previous_child: tree_value): Flags
-}
+
+interface FlagHanger { hang_flags(entry: tree_value, previous_child: tree_value): Flags }
+
 function has_flag(source: Flags, target: Flags): boolean { return (source & target) == target }
 function has_any_flag(source: Flags, target: Flags) { return (source & target) != 0 }
 
@@ -73,5 +72,11 @@ class ComplexFlagHanger implements FlagHanger {
     return new_flags
   }
 }
+class SimpleFlagHanger implements FlagHanger {
+  hang_flags(entry: tree_value, previous_child: tree_value): Flags {
+    return Flags.None
+  }
 
-export { Flags, ComplexFlagHanger, FlagHanger, has_flag, has_any_flag }
+}
+
+export { Flags, ComplexFlagHanger, SimpleFlagHanger, FlagHanger, has_flag, has_any_flag }

@@ -1,11 +1,8 @@
 import { JSDOM } from "jsdom"
-import { Flags, FlagHanger, ComplexFlagHanger, has_flag, has_any_flag } from "./FlagHanger.js"
+import { Flags, FlagHanger, ComplexFlagHanger, SimpleFlagHanger, has_flag, has_any_flag } from "./FlagHanger.js"
 
 
 export const Node = new JSDOM().window.Node
-
-const inline_elements: string = "a, b, i, em , strong, code, span"
-
 
 export type tree_value = { node: Node, child_index: number, flags: Flags }
 
@@ -24,7 +21,7 @@ class PugSerializer {
   flags_hanger: FlagHanger
 
   constructor(private root: Node, options: options) {
-    if (options.simple) this.flags_hanger = undefined
+    if (options.simple) this.flags_hanger = new SimpleFlagHanger()
     else this.flags_hanger = new ComplexFlagHanger(options.inline_elements)
     this.converter = new Converter(options)
   }
