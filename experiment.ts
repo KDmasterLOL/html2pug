@@ -76,6 +76,7 @@ const res = html2pug(test_html, {
   fragment: false,
   tabs: false,
   commas: false,
-  doubleQuotes: false
+  doubleQuotes: false,
+  inline_elements: 'a, strong, code, span'
 })
 console.log(res)

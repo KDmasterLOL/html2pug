@@ -8,6 +8,7 @@ export type Options = {
   commas: boolean,
   doubleQuotes: boolean,
   simple: boolean,
+  inline_elements: string
 }
 
 export function html2pug(sourceHtml, options: Options) {
@@ -19,7 +20,7 @@ export function html2pug(sourceHtml, options: Options) {
     preserveLineBreaks: false
   })
 
-  const { fragment, tabs, commas, doubleQuotes, simple } = options
+  const { fragment, tabs, commas, doubleQuotes, simple, inline_elements } = options
 
   const dom = new JSDOM(html)
   const document = dom.window.document
@@ -29,8 +30,9 @@ export function html2pug(sourceHtml, options: Options) {
   const pugify = new Pugify(root, {
     indentStyle: tabs ? '\t' : '  ',
     separatorStyle: commas ? ', ' : ' ',
-    quoteStyle: doubleQuotes ? '"' : "'",
-    simple
+    quote_style: doubleQuotes ? '"' : "'",
+    simple,
+    inline_elements
   })
   return pugify.parse()
 }
