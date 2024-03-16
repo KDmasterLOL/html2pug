@@ -53,15 +53,15 @@ class ComplexFlagHanger extends AtomicFlagHanger {
   }
   can_make_text_block(node: Node, flags: Flags): boolean {
     if (node.nodeType != Node.TEXT_NODE) return false
-    const has_element_with_many_lines = Array.from(node.childNodes).some((v) => v.nodeType != Node.TEXT_NODE && v.textContent.includes('\n'))
+    const has_element_with_many_lines = Array.from(node.childNodes).some((v) => v.nodeType != Node.TEXT_NODE && v.textContent!.includes('\n'))
     return has_flag(flags, Flags.PreWrap | Flags.FirstChild) &&
-      (node.nodeValue.includes('\n') || has_flag(flags, Flags.SingleChild) == false) &&
+      (node.nodeValue!.includes('\n') || has_flag(flags, Flags.SingleChild) == false) &&
       has_element_with_many_lines == false
   }
   can_make_parent_text_block(element: HTMLElement, flags: Flags): boolean {
     if (has_flag(flags, Flags.PreWrap) == false || has_flag(flags, Flags.TextBlock)) return false
     for (const child of element.children)
-      if (child.textContent.includes('\n') || child.matches(this.inline_elements) == false) return false
+      if (child.textContent!.includes('\n') || child.matches(this.inline_elements) == false) return false
 
     return true
   }
@@ -74,7 +74,7 @@ class ComplexFlagHanger extends AtomicFlagHanger {
     if (has_any_flag(parent_flags, Flags.ParentTextBlock | Flags.TextBlock)) new_flags |= Flags.TextBlock
 
     const child_node = parent_node.childNodes[child_index]
-    if (child_node.textContent.includes('\n')) new_flags |= Flags.HasNewLines
+    if (child_node.textContent!.includes('\n')) new_flags |= Flags.HasNewLines
 
     if (child_node.nodeType == Node.ELEMENT_NODE) {
       const element = child_node as HTMLElement

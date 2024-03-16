@@ -53,7 +53,7 @@ const exit = (text, exitCode = 0) => { // print logs to stdout and exits the pro
 }
 
 {
-  let info = undefined
+  let info: string | undefined = undefined
   if (args.help) info = help; if (args.version) info = version
   if (info) exit(info)
 }
