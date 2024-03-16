@@ -22,9 +22,7 @@ export function html2pug(sourceHtml, options: Options) {
 
   const { fragment, tabs, commas, doubleQuotes, simple, inline_elements } = options
 
-  const dom = new JSDOM(html)
-  const document = dom.window.document
-  let root: Document | DocumentFragment = document
+  const root = fragment ? JSDOM.fragment(html) : new JSDOM(html).window.document
 
 
   const pugify = new Pugify(root, {

@@ -44,6 +44,9 @@ class ComplexFlagHanger extends AtomicFlagHanger {
         const is_inline_element = element.matches(this.inline_elements)
         const has_only_inline_elements = element.querySelector(`*:not(${this.inline_elements})`) == null
         return is_inline_element && has_only_inline_elements
+      case Node.COMMENT_NODE:
+        return previous_child == undefined || previous_child.node.nodeType == Node.TEXT_NODE || (previous_child.flags & Flags.Interpolate) != 0
+
     }
     return false
 

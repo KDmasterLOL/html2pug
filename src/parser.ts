@@ -71,7 +71,6 @@ class PugSerializer {
 
 
 class Converter {
-
   constructor(private options: options) { }
   private getIndent(level = 0): string { return this.options.indentStyle.repeat(level) }
 
@@ -79,7 +78,7 @@ class Converter {
     switch (child_entry.node.nodeType) {
       case Node.TEXT_NODE: return this.convert_text_node(child_entry, parent_entry, level)
       case Node.ELEMENT_NODE: return this.convert_element_node(child_entry, level)
-      // case Node.COMMENT_NODE: return this.convert
+      case Node.COMMENT_NODE: return this.convert_comment_node(child_entry, level)
       default: throw new Error("Unimplemented for node of type " + child_entry.node.nodeType)
     }
   }
@@ -87,7 +86,7 @@ class Converter {
     { node, flags }: tree_value,
     level: number
   ): { value: string, prefix: string } {
-    return { value: node.nodeValue, prefix: "" }
+    return { value: '<!--' + node.nodeValue + '-->', prefix: has_flag(flags, Flags.Interpolate) ? '' : '\n' + this.getIndent(level) }
   }
   convert_element_node(
     { node, flags }: tree_value,
