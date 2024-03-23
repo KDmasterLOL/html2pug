@@ -1,4 +1,4 @@
-import { tree_value, Node } from "./parser.js"
+import { type tree_value, Node } from "./parser.js"
 
 enum Flags {
   None = 0,
@@ -15,10 +15,10 @@ enum Flags {
   HasNewLines = 1 << 7,
 }
 
-interface FlagHanger { hang_flags(entry: tree_value, previous_child: tree_value): Flags }
+interface FlagHanger { hang_flags(entry: tree_value, previous_child: tree_value | undefined): Flags }
 
 class AtomicFlagHanger implements FlagHanger {
-  hang_flags({ node: parent_node, flags: parent_flags, child_index }: tree_value, previous_child: tree_value): Flags {
+  hang_flags({ node: parent_node, flags: parent_flags, child_index }: tree_value, _: tree_value): Flags {
     let new_flags = Flags.None
     if (child_index == 0) new_flags |= Flags.FirstChild
     if (parent_node.childNodes.length == 1) new_flags |= Flags.SingleChild
@@ -74,7 +74,7 @@ class ComplexFlagHanger extends AtomicFlagHanger {
     if (has_any_flag(parent_flags, Flags.ParentTextBlock | Flags.TextBlock)) new_flags |= Flags.TextBlock
 
     const child_node = parent_node.childNodes[child_index]
-    if (child_node.textContent!.includes('\n')) new_flags |= Flags.HasNewLines
+    if (child_node.textContent?.includes('\n')) new_flags |= Flags.HasNewLines
 
     if (child_node.nodeType == Node.ELEMENT_NODE) {
       const element = child_node as HTMLElement
@@ -88,4 +88,5 @@ class ComplexFlagHanger extends AtomicFlagHanger {
   }
 }
 
-export { Flags, ComplexFlagHanger, AtomicFlagHanger as SimpleFlagHanger, FlagHanger, has_flag, has_any_flag }
+export { Flags, ComplexFlagHanger, AtomicFlagHanger as SimpleFlagHanger, has_flag, has_any_flag }
+export type { FlagHanger }

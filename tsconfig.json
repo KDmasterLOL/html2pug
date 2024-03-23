@@ -1,15 +1,18 @@
 {
-    "compilerOptions": {
-        "allowJs": true,
-        "outDir": "dist/",
-        "rootDir": "src/",
-        "resolveJsonModule": true,
-        "target": "ES2022",
-        "moduleResolution": "NodeNext",
-        "module": "NodeNext",
-        "sourceMap": true
-    },
-    "include": [
-        "src/*"
+  "extends": "@tsconfig/bun/tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist/",
+    "rootDir": "src/",
+    "resolveJsonModule": true,
+    "target": "ES2022",
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
+    "sourceMap": true,
+    "lib": [
+      "ESNext",
     ]
+  },
+  "include": [
+    "src/*"
+  ]
 }

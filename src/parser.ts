@@ -1,5 +1,5 @@
 import { JSDOM } from "jsdom"
-import { Flags, FlagHanger, ComplexFlagHanger, SimpleFlagHanger, has_flag, has_any_flag } from "./FlagHanger.js"
+import { Flags, type FlagHanger, ComplexFlagHanger, SimpleFlagHanger, has_flag, has_any_flag } from "./FlagHanger.js"
 
 
 export const Node = new JSDOM().window.Node
@@ -28,7 +28,7 @@ class PugSerializer {
 
 
   parse() {
-    return this.serialize(this.root).substring(1)
+    return this.serialize(this.root)
   }
 
   serialize(tree: Node) {
@@ -53,7 +53,7 @@ class PugSerializer {
       if (last_stack_entry.child_index == 0) previous_child = undefined
 
       const child = last_stack_entry.node.childNodes[last_stack_entry.child_index],
-        level = tree_stack.length
+        level = tree_stack.length - (tree_stack[0].node.nodeType == Node.DOCUMENT_NODE ? 1 : 0)
 
       const child_entry = create_entry(child, this.flags_hanger.hang_flags(last_stack_entry, previous_child))
       const { value, prefix } = this.converter.convert_node(child_entry, last_stack_entry, level)
@@ -62,7 +62,6 @@ class PugSerializer {
 
       result += prefix + value
       last_stack_entry.child_index += 1
-
     }
     return result
   }
@@ -79,8 +78,12 @@ class Converter {
       case Node.TEXT_NODE: return this.convert_text_node(child_entry, parent_entry, level)
       case Node.ELEMENT_NODE: return this.convert_element_node(child_entry, level)
       case Node.COMMENT_NODE: return this.convert_comment_node(child_entry, level)
+      case Node.DOCUMENT_TYPE_NODE: return this.convert_document_type_node()
       default: throw new Error("Unimplemented for node of type " + child_entry.node.nodeType)
     }
+  }
+  convert_document_type_node(): { value: string; prefix: string } {
+    return { value: 'doctype html', prefix: '' }
   }
   private convert_comment_node(
     { node, flags }: tree_value,
@@ -119,7 +122,7 @@ class Converter {
           has_flag(flags, Flags.FirstChild))
           ? ' ' : ''
 
-    let value = node.nodeValue
+    let value = node.nodeValue!
     if (has_flag(flags, Flags.TextBlock)) {
       value = value.replaceAll('\n', '\n' + this.getIndent(level))
     }
@@ -144,8 +147,8 @@ class Converter {
         }
       }
       if (buffer.length != 0) result += '(' + buffer.join(this.options.separatorStyle) + ')'
-      return result
     }
+    return result
   }
   private convert_html_element_open_tag(element: Element): string {
     const { tagName, attributes } = element

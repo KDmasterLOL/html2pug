@@ -1,4 +1,5 @@
 import { html2pug } from './src/index.ts'
+import { readFileSync } from 'fs'
 
 // const test_html = `<!DOCTYPE html>
 // <html lang="en">
@@ -62,21 +63,22 @@ import { html2pug } from './src/index.ts'
 //                     </aio-code>
 //                   </code-example>
 // `
-const test_html = `<pre><code>adfasdf
-asdfasdf
-asdf <span>afdsfasdf</span> asdf
-</code></pre>`
+// const test_html = `<pre><code>adfasdf
+// asdfasdf
+// asdf <span>afdsfasdf</span> asdf
+// </code></pre>`
 const test_fragment = `string of text node`
 
 
 // const test_html = await (await fetch('http://example.com')).text()
 
+const test_html = readFileSync('./test.html').toString()
 const res = html2pug(test_html, {
   simple: false,
   fragment: false,
   tabs: false,
   commas: false,
   doubleQuotes: false,
-  inline_elements: 'a, strong, code, span'
+  inline_elements: 'a, strong, code, span',
 })
 console.log(res)

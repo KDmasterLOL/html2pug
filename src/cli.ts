@@ -2,9 +2,8 @@
 
 import { parseArgs } from 'node:util'
 import getStdin from 'get-stdin'
-import { html2pug, Options } from './index.js'
-import packageInfo from '../package.json' assert { type: 'json'}
-const { version } = packageInfo
+import { html2pug, type Options } from './index.js'
+import { version } from '../package.json' assert { type: 'json'}
 
 const help = `
   html2pug converts HTML to Pug.
@@ -47,7 +46,7 @@ let args = parseArgs({
   },
 }).values
 
-const exit = (text, exitCode = 0) => { // print logs to stdout and exits the process
+const exit = (text: string, exitCode = 0) => { // print logs to stdout and exits the process
   if (exitCode === 1) console.error(text); else console.log(text)
   process.exit(exitCode)
 }

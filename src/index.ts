@@ -11,7 +11,7 @@ export type Options = {
   inline_elements: string
 }
 
-export function html2pug(sourceHtml, options: Options) {
+export function html2pug(sourceHtml: string, options: Options) {
   const html = minify(sourceHtml, {
     caseSensitive: true,
     removeEmptyAttributes: true,

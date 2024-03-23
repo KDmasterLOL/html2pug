@@ -13,6 +13,7 @@
     "jsdom": "^23.0.1"
   },
   "devDependencies": {
+    "@tsconfig/bun": "^1.0.4",
     "@types/html-minifier": "^4.0.5",
     "@types/jsdom": "^21.1.6",
     "@types/node": "^20.10.5",
