@@ -1,7 +1,13 @@
-# html2pug [![Build Status](https://travis-ci.org/izolate/html2pug.svg?branch=master)](https://travis-ci.org/izolate/html2pug)
+# html2pug
 
-Converts **HTML** to **Pug** templating language (_formerly Jade_).  
-Requires Node.js version `7.6` or higher.
+Converts **HTML** to **Pug** templating language.
+
+## Requirments
+
+Require bun
+Requires Node.js version `18` or higher.
+
+## Overview
 
 Turns this :unamused:
 ```html
@@ -29,13 +35,18 @@ html(lang='en')
       h1.title Hello World!
 ```
 
+And also this 
+```html
+<p><span>I am text</span> with some <b>formatting</b></p>
+```
+Into this 
+```pug
+p #[span I am text] with some #[b formatting]
+```
+
 ## Install
 
-Get it on [npm](https://www.npmjs.com/package/html2pug):
-
-```bash
-npm install -g html2pug
-```
+<!--  TODO: -->
 
 ## Usage
 
@@ -60,7 +71,7 @@ See `html2pug --help` for more information.
 ### Programmatically
 
 ```js
-const html2pug = require('html2pug')
+import html2pug from 'html2pug'
 
 const html = '<header><h1 class="title">Hello World!</h1></header>'
 const pug = html2pug(html, { tabs: true })

@@ -1,11 +1,14 @@
 {
   "name": "html2pug",
-  "version": "4.0.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Converts HTML to Pug",
   "main": "dist/index.js",
   "bin": {
-    "html2pug": "dist/cli.js"
+    "html2pug": "src/cli.ts"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
     "get-stdin": "^9.0.0",

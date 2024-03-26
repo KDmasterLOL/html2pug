@@ -65,7 +65,11 @@ class ComplexFlagHanger extends AtomicFlagHanger {
 
     return true
   }
-  can_block_expansion(node: Node) { return node.childNodes.length == 1 && node.childNodes[0].nodeType == Node.ELEMENT_NODE }
+  can_block_expansion(node: Node) {
+    return node.childNodes.length == 1
+      && node.childNodes[0].nodeType == Node.ELEMENT_NODE
+      && node.parentNode?.nodeType == Node.ELEMENT_NODE
+  }
 
   hang_flags(entry: tree_value, previous_child: tree_value): Flags { // Get parent node and previous child of node
     const { node: parent_node, flags: parent_flags, child_index } = entry
