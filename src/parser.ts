@@ -53,7 +53,7 @@ class PugSerializer {
       if (last_stack_entry.child_index == 0) previous_child = undefined
 
       const child = last_stack_entry.node.childNodes[last_stack_entry.child_index],
-        level = tree_stack.length - (tree_stack[0].node.nodeType == Node.DOCUMENT_NODE ? 1 : 0)
+        level = tree_stack.length - 1
 
       const child_entry = create_entry(child, this.flags_hanger.hang_flags(last_stack_entry, previous_child))
       const { value, prefix } = this.converter.convert_node(child_entry, last_stack_entry, level)
