@@ -16,7 +16,7 @@ const help = `
     -t, --tabs           Use tabs for indentation
     -c, --commas         Use commas to separate attributes
     -d, --double-quotes  Use double quotes for attribute values
-    -i, --interpolate    Use to interpolate inline tags
+    -s, --simple         Doesn't do interpoltaion, block expansion
 
     -h, --help           Show this page
     -v, --version        Show version

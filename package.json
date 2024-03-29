@@ -4,9 +4,7 @@
   "type": "module",
   "description": "Converts HTML to Pug",
   "main": "dist/index.js",
-  "bin": {
-    "html2pug": "src/cli.ts"
-  },
+  "bin": "src/cli.ts",
   "engines": {
     "node": ">=18"
   },
