@@ -5,9 +5,16 @@ Converts **HTML** to **Pug** templating language.
 ## Requirments
 
 Require bun
-Requires Node.js version `18` or higher.
 
 ## Overview
+
+html2pug convert html markup to pug
+
+### Features 
+- Block expansion
+- Text Block
+
+### Example
 
 Turns this :unamused:
 ```html
@@ -18,7 +25,7 @@ Turns this :unamused:
   </head>
   <body>
     <div id="content">
-      <h1 class="title">Hello World!</h1>
+      <h1 class="title"><strong>Hello</strong> World!</h1>
     </div>
   </body>
 </html>
@@ -32,16 +39,7 @@ html(lang='en')
     title Hello World!
    body
     #content
-      h1.title Hello World!
-```
-
-And also this 
-```html
-<p><span>I am text</span> with some <b>formatting</b></p>
-```
-Into this 
-```pug
-p #[span I am text] with some #[b formatting]
+      h1.title #[strong Hello] World!
 ```
 
 ## Install
@@ -85,3 +83,5 @@ Name | Type | Default | Description
 `commas` | `Boolean` | `true` | Use commas to separate node attributes
 `doubleQuotes` | `Boolean` | `false` | Use double quotes instead of single quotes for attribute values
 `fragment` | `Boolean` | `false` | Wraps result in enclosing `<html>` and `<body>` tags if false
+
+

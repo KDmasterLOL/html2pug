@@ -146,8 +146,8 @@ class Converter {
           break
         }
       }
-      if (buffer.length != 0) result += '(' + buffer.join(this.options.separatorStyle) + ')'
     }
+    if (buffer.length != 0) result += '(' + buffer.join(this.options.separatorStyle) + ')'
     return result
   }
   private convert_html_element_open_tag(element: Element): string {
