@@ -22,7 +22,8 @@ class AtomicFlagHanger implements FlagHanger {
     let new_flags = Flags.None
     if (child_index == 0) new_flags |= Flags.FirstChild
     if (parent_node.childNodes.length == 1) new_flags |= Flags.SingleChild
-    if ((parent_flags & Flags.PreWrap) || (parent_node.nodeName.toLowerCase() == "pre")) new_flags |= Flags.PreWrap
+    const child = parent_node.childNodes[child_index]
+    if (has_flag(parent_flags, Flags.PreWrap) || (child.nodeName.toLowerCase() == "pre")) new_flags |= Flags.PreWrap
     return new_flags
   }
 
@@ -59,10 +60,11 @@ class ComplexFlagHanger extends AtomicFlagHanger {
       has_element_with_many_lines == false
   }
   can_make_parent_text_block(element: HTMLElement, flags: Flags): boolean {
-    if (has_flag(flags, Flags.PreWrap) == false || has_flag(flags, Flags.TextBlock)) return false
+    if (!has_flag(flags, Flags.PreWrap) || has_flag(flags, Flags.TextBlock)) return false
     for (const child of element.children)
-      if (child.textContent!.includes('\n') || child.matches(this.inline_elements) == false) return false
-
+      if (child.nodeType != Node.TEXT_NODE &&
+        (child.textContent!.includes('\n') || !child.matches(this.inline_elements))
+      ) return false
     return true
   }
   can_block_expansion(node: Node) {
