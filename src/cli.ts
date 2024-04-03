@@ -31,30 +31,30 @@ const help = `
 
 
 let args = parseArgs({
-  options: {
-    // Arguments for CLI
-    help: { type: 'boolean', short: 'h' },
-    version: { type: 'boolean', short: 'v' },
+	options: {
+		// Arguments for CLI
+		help: { type: 'boolean', short: 'h' },
+		version: { type: 'boolean', short: 'v' },
 
-    // Arguments for converter
-    fragment: { type: 'boolean', short: 'f' },
-    tabs: { type: 'boolean', short: 't' },
-    commas: { type: 'boolean', short: 'c' },
-    doubleQuotes: { type: 'boolean', short: 'd' },
-    simple: { type: 'boolean', short: 's' },
-    inline_elements: { type: 'string', default: "a, b, i, em , strong, code, span" }
-  },
+		// Arguments for converter
+		fragment: { type: 'boolean', short: 'f' },
+		tabs: { type: 'boolean', short: 't' },
+		commas: { type: 'boolean', short: 'c' },
+		doubleQuotes: { type: 'boolean', short: 'd' },
+		simple: { type: 'boolean', short: 's' },
+		inline_elements: { type: 'string', default: "a, b, i, em , strong, code, span" }
+	},
 }).values
 
 const exit = (text: string, exitCode = 0) => { // print logs to stdout and exits the process
-  if (exitCode === 1) console.error(text); else console.log(text)
-  process.exit(exitCode)
+	if (exitCode === 1) console.error(text); else console.log(text)
+	process.exit(exitCode)
 }
 
 {
-  let info: string | undefined = undefined
-  if (args.help) info = help; if (args.version) info = version
-  if (info) exit(info)
+	let info: string | undefined = undefined
+	if (args.help) info = help; if (args.version) info = version
+	if (info) exit(info)
 }
 
 const stdin = await getStdin(); if (!stdin) exit(help)
